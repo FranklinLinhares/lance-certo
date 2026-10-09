@@ -1,0 +1,89 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { exigirEmpresa } from "@/lib/sessao";
+import { CATEGORIAS, dataHora, porUnidade, type Categoria, type Unidade } from "@/lib/dominio";
+import { encerrarOferta } from "./acoes";
+
+type Oferta = {
+  id: string;
+  produto: string;
+  produto_chave: string;
+  categoria: Categoria;
+  unidade: Unidade;
+  preco_unitario: number;
+  quantidade_disponivel: number;
+  valida_ate: string;
+  ativa: boolean;
+  compras: { quantidade: number; data: string; comprador: { nome: string; telefone: string } | null }[];
+};
+
+export default async function MinhasOfertas() {
+  const { supabase, empresa } = await exigirEmpresa();
+  if (empresa.papel !== "fornecedor") redirect("/vitrine");
+
+  const { data } = await supabase
+    .from("ofertas")
+    .select("*, compras(quantidade, data, comprador:empresas!compras_comprador_id_fkey(nome, telefone))")
+    .eq("fornecedor_id", empresa.id)
+    .order("criado_em", { ascending: false })
+    .returns<Oferta[]>();
+  const ofertas = data ?? [];
+
+  // Para cada produto, quantos compradores próximos têm pedido aberto.
+  const chaves = [...new Set(ofertas.filter((o) => o.ativa).map((o) => o.produto_chave))];
+  const interessados = Object.fromEntries(
+    await Promise.all(
+      chaves.map(async (chave) => {
+        const { data: n } = await supabase.rpc("compradores_interessados", { chave });
+        return [chave, Number(n ?? 0)] as const;
+      }),
+    ),
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Minhas ofertas</h1>
+        <Link href="/ofertas/nova" className="botao">Nova oferta</Link>
+      </div>
+      {ofertas.length === 0 && <p className="text-stone-600">Você ainda não publicou ofertas.</p>}
+      <ul className="space-y-3">
+        {ofertas.map((o) => (
+          <li key={o.id} className={`cartao space-y-2 ${o.ativa ? "" : "opacity-60"}`}>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div>
+                <div className="font-semibold">{o.produto}</div>
+                <div className="text-sm text-stone-500">
+                  {CATEGORIAS[o.categoria]} · {o.quantidade_disponivel} {o.unidade} · válida até {dataHora(o.valida_ate)}
+                </div>
+              </div>
+              <div className="text-lg font-bold text-green-800">{porUnidade(o.preco_unitario, o.unidade)}</div>
+            </div>
+            {o.ativa && interessados[o.produto_chave] > 0 && (
+              <p className="aviso">
+                {interessados[o.produto_chave]} comprador(es) perto de você têm leilão aberto para este produto.{" "}
+                <Link href="/pedidos" className="underline">Ver leilões</Link>
+              </p>
+            )}
+            {o.compras.length > 0 && (
+              <div className="text-sm">
+                <div className="font-medium">Compras pela vitrine:</div>
+                <ul className="list-disc pl-5">
+                  {o.compras.map((c, n) => (
+                    <li key={n}>{c.comprador?.nome} · {c.quantidade} {o.unidade} · WhatsApp {c.comprador?.telefone}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {o.ativa && (
+              <form action={encerrarOferta}>
+                <input type="hidden" name="id" value={o.id} />
+                <button className="text-sm text-red-700 hover:underline">Encerrar oferta</button>
+              </form>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}

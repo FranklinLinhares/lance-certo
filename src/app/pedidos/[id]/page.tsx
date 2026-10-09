@@ -1,0 +1,154 @@
+import { notFound } from "next/navigation";
+import { exigirEmpresa } from "@/lib/sessao";
+import { CATEGORIAS, dataHora, porUnidade, reais, type Categoria, type ReferenciaPreco as Referencia, type Unidade } from "@/lib/dominio";
+import { ReferenciaPreco } from "@/components/ReferenciaPreco";
+import { cancelarPedido, escolherVencedor } from "../acoes";
+import { AoVivo } from "./AoVivo";
+import { DarLance } from "./DarLance";
+
+type Pedido = {
+  id: string;
+  comprador_id: string;
+  produto: string;
+  categoria: Categoria;
+  unidade: Unidade;
+  quantidade: number;
+  especificacoes: string | null;
+  validade_minima_dias: number | null;
+  entrega_ate: string | null;
+  preco_maximo: number | null;
+  lances_visiveis: boolean;
+  encerra_em: string;
+  status: "aberto" | "encerrado" | "fechado" | "cancelado";
+  lance_vencedor_id: string | null;
+  referencia_preco: Referencia | null;
+  comprador: { nome: string; cidade: string; telefone: string };
+};
+type Lance = {
+  id: string;
+  fornecedor_id: string;
+  preco_unitario: number;
+  validade: string | null;
+  observacao: string | null;
+  criado_em: string;
+  fornecedor: { nome: string; cidade: string; telefone: string; agricultor: boolean } | null;
+};
+
+export default async function DetalhePedido({ params }: PageProps<"/pedidos/[id]">) {
+  const { id } = await params;
+  const { supabase, empresa } = await exigirEmpresa();
+
+  const { data: pedido } = await supabase
+    .from("pedidos")
+    .select("*, comprador:empresas!pedidos_comprador_id_fkey(nome, cidade, telefone)")
+    .eq("id", id)
+    .maybeSingle<Pedido>();
+  if (!pedido) notFound();
+
+  // A política de segurança já filtra os lances conforme a visibilidade escolhida.
+  const { data } = await supabase
+    .from("lances")
+    .select("*, fornecedor:empresas!lances_fornecedor_id_fkey(nome, cidade, telefone, agricultor)")
+    .eq("pedido_id", id)
+    .order("preco_unitario")
+    .order("criado_em");
+  const lances = (data ?? []) as Lance[];
+
+  const souComprador = pedido.comprador_id === empresa.id;
+  const u = pedido.unidade;
+  const aberto = pedido.status === "aberto" && new Date(pedido.encerra_em) > new Date();
+  const vencedor = lances.find((l) => l.id === pedido.lance_vencedor_id);
+  const souVencedor = vencedor?.fornecedor_id === empresa.id;
+  const meuMenor = lances.filter((l) => l.fornecedor_id === empresa.id).at(0);
+  const menor = lances.at(0);
+
+  let dica = "Quanto menor o preço, maior a chance de vencer.";
+  if (pedido.lances_visiveis && menor) dica = `O menor lance atual é ${porUnidade(menor.preco_unitario, u)}. Seu lance precisa ser menor.`;
+  if (!pedido.lances_visiveis) dica = meuMenor
+    ? `Leilão fechado. Seu último lance foi ${porUnidade(meuMenor.preco_unitario, u)}; você pode baixar.`
+    : "Leilão fechado: você não vê os outros lances.";
+  if (pedido.preco_maximo) dica += ` Preço máximo: ${porUnidade(pedido.preco_maximo, u)}.`;
+
+  return (
+    <div className="space-y-4">
+      <AoVivo pedido={id} />
+      <div className="cartao space-y-2">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h1 className="text-2xl font-bold">{pedido.produto}</h1>
+          <span className="rounded-full bg-stone-100 px-3 py-1 text-sm">
+            {pedido.status === "aberto" ? (aberto ? `Encerra ${dataHora(pedido.encerra_em)}` : "Prazo encerrado") : pedido.status}
+          </span>
+        </div>
+        <p className="text-stone-600">
+          {pedido.quantidade} {u} · {CATEGORIAS[pedido.categoria]} · {pedido.comprador.nome}, {pedido.comprador.cidade}
+        </p>
+        {pedido.especificacoes && <p>{pedido.especificacoes}</p>}
+        <p className="text-sm text-stone-500">
+          {pedido.entrega_ate && <>Entrega até {new Date(pedido.entrega_ate).toLocaleDateString("pt-BR")} · </>}
+          {pedido.validade_minima_dias != null && <>Validade mínima de {pedido.validade_minima_dias} dias · </>}
+          {pedido.lances_visiveis ? "Leilão aberto" : "Leilão fechado"}
+        </p>
+      </div>
+
+      {souComprador && pedido.referencia_preco && (
+        <div className="space-y-2">
+          <h2 className="font-semibold">Preço de referência pesquisado pela IA</h2>
+          <ReferenciaPreco referencia={pedido.referencia_preco} />
+        </div>
+      )}
+
+      {vencedor && (souComprador || souVencedor) && (
+        <div className="cartao border-green-700 bg-green-50">
+          <h2 className="font-semibold">Negócio fechado: {porUnidade(vencedor.preco_unitario, u)}</h2>
+          {souComprador ? (
+            <p>Fornecedor: {vencedor.fornecedor?.nome} ({vencedor.fornecedor?.cidade}) · <a className="underline" href={`https://wa.me/55${vencedor.fornecedor?.telefone}`}>WhatsApp</a></p>
+          ) : (
+            <p>Você venceu! Comprador: {pedido.comprador.nome} · <a className="underline" href={`https://wa.me/55${pedido.comprador.telefone}`}>WhatsApp</a></p>
+          )}
+        </div>
+      )}
+
+      {!souComprador && empresa.papel === "fornecedor" && aberto && <DarLance pedido={id} unidade={u} dica={dica} />}
+
+      <section className="cartao space-y-2">
+        <h2 className="font-semibold">
+          Lances ({lances.length}){!souComprador && !pedido.lances_visiveis && " · você vê apenas os seus"}
+        </h2>
+        {lances.length === 0 && <p className="text-sm text-stone-500">Nenhum lance ainda.</p>}
+        <ol className="divide-y divide-stone-100">
+          {lances.map((l, i) => {
+            const meu = l.fornecedor_id === empresa.id;
+            return (
+              <li key={l.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <div>
+                  <span className="font-semibold">{i + 1}º · {porUnidade(l.preco_unitario, u)}</span>
+                  <span className="ml-2 text-sm text-stone-500">
+                    {souComprador ? `${l.fornecedor?.nome} (${l.fornecedor?.cidade})` : meu ? "Seu lance" : "Concorrente"}
+                    {l.fornecedor?.agricultor && souComprador && " · agricultor"}
+                    {" · "}{dataHora(l.criado_em)}
+                  </span>
+                  {l.observacao && (souComprador || meu) && <div className="text-sm">{l.observacao}</div>}
+                </div>
+                {souComprador && (pedido.status === "aberto" || pedido.status === "encerrado") && (
+                  <form action={escolherVencedor}>
+                    <input type="hidden" name="pedido" value={id} />
+                    <input type="hidden" name="lance" value={l.id} />
+                    <button className={i === 0 ? "botao py-1" : "botao-secundario py-1"}>Escolher</button>
+                  </form>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+        {souComprador && <p className="text-xs text-stone-500">Total do menor lance: {menor ? reais(Number(menor.preco_unitario) * Number(pedido.quantidade)) : "–"}</p>}
+      </section>
+
+      {souComprador && pedido.status === "aberto" && (
+        <form action={cancelarPedido}>
+          <input type="hidden" name="pedido" value={id} />
+          <button className="text-sm text-red-700 hover:underline">Cancelar leilão</button>
+        </form>
+      )}
+    </div>
+  );
+}

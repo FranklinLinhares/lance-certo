@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Lance Certo
 
-## Getting Started
+Aplicativo de compra e venda de alimentos entre empresas, com leilão de menor preço, vitrine de ofertas e um agente de IA que pesquisa preços.
 
-First, run the development server:
+- **Compradores** (só com CNPJ) publicam pedidos e recebem lances. Em cada pedido escolhem se os fornecedores veem os preços dos concorrentes (leilão aberto) ou se só o comprador vê (leilão fechado).
+- **Fornecedores** (CNPJ) e **agricultores** (CNPJ, ou CPF com CAF ou inscrição estadual de produtor rural) anunciam produtos na vitrine e dão lances nos pedidos.
+- **Raio em km**: cada empresa informa até onde compra ou entrega. Ofertas, pedidos e lances só aparecem quando a distância cabe no raio dos dois lados.
+- **Vitrine**: o comprador pesquisa um produto e vê quantos fornecedores o oferecem, o menor, o médio e o maior preço.
+- **Meus preços**: histórico semanal do preço pago por produto, com a variação em relação à semana anterior.
+- **IA (Claude)**: preenche pedidos e ofertas a partir de texto livre e pesquisa preços de mercado na internet (CEASA, CONAB, atacadistas), sugerindo um preço máximo.
+
+O plano completo está no projeto do Claude, em `plano/plano-inicial.md`.
+
+## Tecnologia
+
+- Next.js 16 (App Router) com Tailwind CSS
+- Supabase: banco PostgreSQL, login e lances em tempo real
+- Claude API (`@anthropic-ai/sdk`) com busca na web
+
+## Como rodar
+
+1. Crie um projeto gratuito em [supabase.com](https://supabase.com).
+2. No painel do Supabase, abra **SQL Editor**, cole o conteúdo de `supabase/migrations/0001_inicial.sql` e execute.
+3. Copie `.env.example` para `.env.local` e preencha a URL e a chave `anon` do Supabase (**Project Settings > API**) e, para a IA, uma chave do [console da Anthropic](https://console.anthropic.com).
+4. Instale e rode:
+
+   ```bash
+   npm install
+   npm run dev
+   ```
+
+5. Abra http://localhost:3000, crie uma conta e cadastre a empresa.
+
+## Testes
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run test:db   # regras do banco (raio, lances, vitrine, histórico) num Postgres em memória
+npm run lint
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Estrutura
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `supabase/migrations/` esquema do banco, funções de negócio (`dar_lance`, `fechar_pedido`, `comprar_oferta`, `buscar_ofertas`, `pedidos_proximos`) e regras de acesso (RLS)
+- `src/lib/ia.ts` agente de IA
+- `src/app/vitrine`, `src/app/ofertas` vitrine e ofertas dos fornecedores
+- `src/app/pedidos` leilões
+- `src/app/historico` histórico de preços do comprador
