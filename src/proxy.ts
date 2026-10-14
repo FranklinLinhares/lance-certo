@@ -1,11 +1,18 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const ROTAS_PUBLICAS = ["/", "/entrar"];
+const ROTAS_PUBLICAS = ["/", "/entrar", "/auth/confirmar"];
 
 // Renova a sessão do Supabase a cada requisição e manda quem não está logado
 // para a tela de entrada.
 export async function proxy(request: NextRequest) {
+  // Link de confirmação que voltou para outra página (ex.: o Site URL do Supabase).
+  if (request.nextUrl.searchParams.has("code") && request.nextUrl.pathname !== "/auth/confirmar") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/confirmar";
+    return NextResponse.redirect(url);
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(

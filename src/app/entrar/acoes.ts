@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { criarClienteServidor } from "@/lib/supabase/server";
 
@@ -13,9 +14,18 @@ export async function entrar(_: EstadoEntrar, form: FormData): Promise<EstadoEnt
     return { erro: "Informe o e-mail e uma senha com pelo menos 8 caracteres." };
   }
 
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return { erro: "O app ainda não está ligado ao banco de dados. Confira as variáveis do Supabase na Vercel." };
+  }
+
   const supabase = await criarClienteServidor();
   if (criarConta) {
-    const { data, error } = await supabase.auth.signUp({ email, password: senha });
+    const origem = (await headers()).get("origin") ?? "";
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password: senha,
+      options: { emailRedirectTo: `${origem}/auth/confirmar` },
+    });
     if (error) return { erro: traduzir(error.message) };
     if (!data.session) {
       return { mensagem: "Enviamos um link de confirmação para o seu e-mail. Confirme e depois entre." };
@@ -38,5 +48,10 @@ function traduzir(mensagem: string) {
   if (/invalid login/i.test(mensagem)) return "E-mail ou senha incorretos.";
   if (/already registered/i.test(mensagem)) return "Este e-mail já tem conta. Use a opção Entrar.";
   if (/email not confirmed/i.test(mensagem)) return "Confirme seu e-mail pelo link que enviamos.";
+  if (/rate limit/i.test(mensagem)) return "Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.";
+  if (/sending confirmation email/i.test(mensagem)) return "Não foi possível enviar o e-mail de confirmação. Tente de novo em alguns minutos.";
+  if (/password/i.test(mensagem)) return "A senha não foi aceita. Use pelo menos 8 caracteres, com letras e números.";
+  if (/invalid.*email|email.*invalid/i.test(mensagem)) return "E-mail inválido.";
+  if (/fetch failed|network/i.test(mensagem)) return "Não foi possível falar com o banco de dados. Tente de novo.";
   return mensagem;
 }
