@@ -1,10 +1,12 @@
 "use client";
 
 import { useActionState } from "react";
+import { useSearchParams } from "next/navigation";
 import { entrar, type EstadoEntrar } from "./acoes";
 
 export default function Entrar() {
   const [estado, acao, enviando] = useActionState<EstadoEntrar, FormData>(entrar, {});
+  const linkInvalido = useSearchParams().get("erro") === "confirmacao";
 
   return (
     <div className="mx-auto max-w-sm space-y-4">
@@ -18,6 +20,9 @@ export default function Entrar() {
           <label className="rotulo" htmlFor="senha">Senha</label>
           <input id="senha" name="senha" type="password" required minLength={8} autoComplete="current-password" className="campo" />
         </div>
+        {linkInvalido && !estado.erro && !estado.mensagem && (
+          <p className="aviso">O link de confirmação expirou ou já foi usado. Tente entrar com seu e-mail e senha.</p>
+        )}
         {estado.erro && <p className="erro">{estado.erro}</p>}
         {estado.mensagem && <p className="aviso">{estado.mensagem}</p>}
         <div className="flex gap-2">
