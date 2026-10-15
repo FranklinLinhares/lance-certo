@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const ROTAS_PUBLICAS = ["/", "/entrar", "/auth/confirmar"];
+const ROTAS_PUBLICAS = ["/", "/entrar", "/auth/confirmar", "/diagnostico"];
 
 // Renova a sessão do Supabase a cada requisição e manda quem não está logado
 // para a tela de entrada.
@@ -14,6 +14,12 @@ export async function proxy(request: NextRequest) {
   }
 
   let response = NextResponse.next({ request });
+
+  // Sem as variáveis do Supabase o app não tem login; deixa as páginas abrirem
+  // para que /entrar e /diagnostico expliquem o que falta.
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return response;
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
