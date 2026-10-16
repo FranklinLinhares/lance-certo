@@ -1,12 +1,22 @@
 "use server";
 
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { criarClienteServidor } from "@/lib/supabase/server";
 
 export type EstadoEntrar = { erro?: string; mensagem?: string };
 
-export async function entrar(_: EstadoEntrar, form: FormData): Promise<EstadoEntrar> {
+export async function entrar(estado: EstadoEntrar, form: FormData): Promise<EstadoEntrar> {
+  try {
+    return await tentarEntrar(estado, form);
+  } catch (e) {
+    unstable_rethrow(e); // deixa o redirect do Next.js passar
+    console.error("Falha ao entrar ou criar conta", e);
+    return { erro: `Erro inesperado: ${(e as Error).message}. Abra /diagnostico para ver o que falta configurar.` };
+  }
+}
+
+async function tentarEntrar(_: EstadoEntrar, form: FormData): Promise<EstadoEntrar> {
   const email = String(form.get("email") ?? "").trim();
   const senha = String(form.get("senha") ?? "");
   const criarConta = form.get("modo") === "criar";
