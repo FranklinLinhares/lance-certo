@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { salvarEmpresa, type EstadoCadastro } from "./acoes";
 import { CATEGORIAS, type Empresa } from "@/lib/dominio";
+import { EXIGIR_DOCUMENTO } from "@/lib/documentos";
 
 export function FormularioEmpresa({ empresa }: { empresa: Empresa | null }) {
   const [estado, acao, enviando] = useActionState<EstadoCadastro, FormData>(salvarEmpresa, {});
@@ -52,7 +53,8 @@ export function FormularioEmpresa({ empresa }: { empresa: Empresa | null }) {
 
       <div>
         <label className="rotulo" htmlFor="documento">{agricultor ? "CNPJ ou CPF" : "CNPJ"}</label>
-        <input id="documento" name="documento" required inputMode="numeric" defaultValue={empresa?.documento} className="campo" />
+        <input id="documento" name="documento" required={EXIGIR_DOCUMENTO} inputMode="numeric" defaultValue={empresa?.documento} className="campo" />
+        {!EXIGIR_DOCUMENTO && <p className="mt-1 text-sm text-stone-500">Opcional durante os testes.</p>}
       </div>
 
       {agricultor && (

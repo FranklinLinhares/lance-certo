@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { criarClienteServidor } from "@/lib/supabase/server";
-import { cnpjValido, cpfValido, soDigitos } from "@/lib/documentos";
+import { EXIGIR_DOCUMENTO, cnpjValido, cpfValido, documentoDeTeste, soDigitos } from "@/lib/documentos";
 import { CATEGORIAS, type Categoria } from "@/lib/dominio";
 
 export type EstadoCadastro = { erro?: string };
@@ -16,12 +16,15 @@ export async function salvarEmpresa(_: EstadoCadastro, form: FormData): Promise<
 
   const papel = form.get("papel") === "fornecedor" ? "fornecedor" : "comprador";
   const agricultor = papel === "fornecedor" && form.get("agricultor") === "on";
-  const documento = soDigitos(String(form.get("documento") ?? ""));
+  let documento = soDigitos(String(form.get("documento") ?? ""));
   const registroRural = String(form.get("registro_rural") ?? "").trim();
   const tipoRegistro = form.get("tipo_registro") === "ie" ? "cpf_ie" : "cpf_caf";
 
   let tipoDocumento: "cnpj" | "cpf_caf" | "cpf_ie" = "cnpj";
-  if (documento.length === 11) {
+  if (!EXIGIR_DOCUMENTO) {
+    // Modo de testes: aceita qualquer número; sem 14 dígitos, gera um de teste.
+    if (documento.length !== 14) documento = documentoDeTeste();
+  } else if (documento.length === 11) {
     if (!agricultor) return { erro: "Use o CNPJ da empresa. CPF só é aceito para agricultores." };
     if (!cpfValido(documento)) return { erro: "CPF inválido." };
     if (!registroRural) return { erro: "Informe o número do CAF ou da inscrição estadual de produtor rural." };
