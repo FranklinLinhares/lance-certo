@@ -1,8 +1,8 @@
-// Roda a migração num Postgres em memória (PGlite) com um esboço do esquema
+// Roda as migrações, em ordem, num Postgres em memória (PGlite) com um esboço do esquema
 // auth do Supabase e verifica as regras de negócio principais.
 // Uso: node supabase/tests/testar-sql.mjs
 import { PGlite } from "@electric-sql/pglite";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import assert from "node:assert/strict";
 
 const db = new PGlite();
@@ -15,7 +15,10 @@ await db.exec(`
   create publication supabase_realtime;
   grant usage on schema public, auth to authenticated;
 `);
-await db.exec(readFileSync(new URL("../migrations/0001_inicial.sql", import.meta.url), "utf8"));
+const migracoes = new URL("../migrations/", import.meta.url);
+for (const arquivo of readdirSync(migracoes).filter((a) => a.endsWith(".sql")).sort()) {
+  await db.exec(readFileSync(new URL(arquivo, migracoes), "utf8"));
+}
 await db.exec(`grant select, insert, update, delete on all tables in schema public to authenticated;`);
 
 const ids = {
@@ -110,12 +113,27 @@ const vencedor = (await db.query(`select id from lances where pedido_id = $1 ord
 await falha(ids.atacado, `select fechar_pedido($1, $2)`, [aberto, vencedor], /não encontrado/);
 await como(ids.restaurante, `select fechar_pedido($1, $2)`, [aberto, vencedor]);
 await falha(ids.agricultor, `select dar_lance($1, 5.00)`, [aberto], /encerrado/);
+// Pedido fechado não pode mais ser cancelado.
+await como(ids.restaurante, `update pedidos set status = 'cancelado' where id = $1`, [aberto]);
+assert.equal((await db.query(`select status from pedidos where id = $1`, [aberto])).rows[0].status, "fechado");
 
 // Compra pela vitrine baixa o estoque.
 const ofertaAgricultor = (await db.query(`select id from ofertas where fornecedor_id = $1`, [ids.agricultor])).rows[0].id;
 await falha(ids.restaurante, `select comprar_oferta($1, 500)`, [ofertaAgricultor], /Quantidade indisponível/);
 await como(ids.restaurante, `select comprar_oferta($1, 50)`, [ofertaAgricultor]);
 assert.equal(Number((await db.query(`select quantidade_disponivel q from ofertas where id = $1`, [ofertaAgricultor])).rows[0].q), 150);
+// Levar todo o estoque esgota a oferta.
+await como(ids.restaurante, `select comprar_oferta($1, 150)`, [ofertaAgricultor]);
+const esgotada = (await db.query(`select quantidade_disponivel q, ativa from ofertas where id = $1`, [ofertaAgricultor])).rows[0];
+assert.equal(Number(esgotada.q), 0);
+assert.equal(esgotada.ativa, false);
+
+// Quem troca o papel para fornecedor não dá lance no próprio pedido.
+const proprio = (await como(ids.restaurante, `insert into pedidos (comprador_id, produto, produto_chave, categoria, unidade, quantidade, lances_visiveis, encerra_em)
+  values ($1, 'Cebola roxa', 'cebola-roxa', 'hortifruti', 'kg', 20, true, ${amanha}) returning id`, [ids.restaurante])).rows[0].id;
+await como(ids.restaurante, `update empresas set papel = 'fornecedor' where id = $1`, [ids.restaurante]);
+await falha(ids.restaurante, `select dar_lance($1, 1.00)`, [proprio], /próprio pedido/);
+await como(ids.restaurante, `update empresas set papel = 'comprador' where id = $1`, [ids.restaurante]);
 
 // Histórico semanal com variação.
 await como(ids.restaurante, `insert into compras (comprador_id, fornecedor_nome, produto, produto_chave, categoria, unidade, quantidade, preco_unitario, origem, data)

@@ -75,6 +75,6 @@ export async function escolherVencedor(form: FormData) {
 export async function cancelarPedido(form: FormData) {
   const { supabase, empresa } = await exigirEmpresa();
   const pedido = String(form.get("pedido"));
-  await supabase.from("pedidos").update({ status: "cancelado" }).eq("id", pedido).eq("comprador_id", empresa.id);
+  await supabase.from("pedidos").update({ status: "cancelado" }).eq("id", pedido).eq("comprador_id", empresa.id).eq("status", "aberto");
   revalidatePath(`/pedidos/${pedido}`);
 }

@@ -20,7 +20,7 @@ O plano completo está no projeto do Claude, em `plano/plano-inicial.md`.
 ## Como rodar
 
 1. Crie um projeto gratuito em [supabase.com](https://supabase.com).
-2. No painel do Supabase, abra **SQL Editor**, cole o conteúdo de `supabase/migrations/0001_inicial.sql` e execute.
+2. No painel do Supabase, abra **SQL Editor**, cole e execute, um de cada vez e em ordem, os arquivos de `supabase/migrations/` (`0001_inicial.sql`, depois `0002_correcoes_pedidos_e_vitrine.sql`, e assim por diante). Num banco que já tem a 0001, rode só as migrações novas.
 3. Copie `.env.example` para `.env.local` e preencha a URL e a chave `anon` do Supabase (**Project Settings > API**) e, para a IA, uma chave do [console da Anthropic](https://console.anthropic.com).
 4. Instale e rode:
 
