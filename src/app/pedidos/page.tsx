@@ -25,11 +25,12 @@ export default async function Pedidos() {
   const vendendo = empresa.papel === "fornecedor";
 
   // Os leilões que a conta criou aparecem sempre, mesmo no modo Vender, para poder escolher o vencedor.
-  const { data: meus } = await supabase
+  const { data: meus, error: erroMeus } = await supabase
     .from("pedidos")
-    .select("id, produto, categoria, unidade, quantidade, encerra_em, status, lances_visiveis, lances(count)")
+    .select("id, produto, categoria, unidade, quantidade, encerra_em, status, lances_visiveis, lances!lances_pedido_id_fkey(count)")
     .eq("comprador_id", empresa.id)
     .order("criado_em", { ascending: false });
+  if (erroMeus) throw new Error(erroMeus.message);
   const meusLeiloes = (meus ?? []).map((p) => ({ ...p, total_lances: (p.lances as { count: number }[])[0]?.count ?? 0 })) as Linha[];
 
   // Leilões de outros compradores só no modo Vender, que é quando a conta pode dar lance.
