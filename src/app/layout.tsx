@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import "./globals.css";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { sair } from "@/app/entrar/acoes";
+import { trocarModo } from "@/app/cadastro/modo";
 
 const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
@@ -37,7 +38,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   );
 }
 
-// Links conforme o papel de quem está logado.
+// Links conforme o modo (comprar ou vender) de quem está logado.
 async function Menu() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return null;
   const supabase = await criarClienteServidor();
@@ -63,7 +64,22 @@ async function Menu() {
         </>
       )}
       <div className="ml-auto flex items-center gap-3 text-sm">
-        {empresa && <span className="hidden text-stone-500 sm:inline">{empresa.nome}</span>}
+        {empresa && (
+          <form action={trocarModo} className="flex overflow-hidden rounded-full border border-stone-300">
+            {(["comprador", "fornecedor"] as const).map((p) => (
+              <button
+                key={p}
+                name="papel"
+                value={p}
+                aria-pressed={empresa.papel === p}
+                className={`px-3 py-1 ${empresa.papel === p ? "bg-green-700 font-semibold text-white" : "text-stone-600 hover:bg-stone-100"}`}
+              >
+                {p === "comprador" ? "Comprar" : "Vender"}
+              </button>
+            ))}
+          </form>
+        )}
+        {empresa && <Link href="/cadastro" className="hidden text-stone-500 hover:text-green-800 sm:inline">{empresa.nome}</Link>}
         {user ? (
           <form action={sair}>
             <button className="text-stone-600 hover:text-red-700">Sair</button>

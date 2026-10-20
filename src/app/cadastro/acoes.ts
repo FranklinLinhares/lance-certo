@@ -15,23 +15,26 @@ export async function salvarEmpresa(_: EstadoCadastro, form: FormData): Promise<
   if (!user) redirect("/entrar");
 
   const papel = form.get("papel") === "fornecedor" ? "fornecedor" : "comprador";
-  const agricultor = papel === "fornecedor" && form.get("agricultor") === "on";
+  const pessoaFisica = form.get("pessoa") === "pf";
+  const agricultor = form.get("agricultor") === "on";
+  const nomeCompleto = String(form.get("nome_completo") ?? "").trim();
+  const nomeFantasia = String(form.get("nome_fantasia") ?? "").trim();
+  if (!nomeCompleto) return { erro: "Informe o seu nome completo." };
   let documento = soDigitos(String(form.get("documento") ?? ""));
   const registroRural = String(form.get("registro_rural") ?? "").trim();
   const tipoRegistro = form.get("tipo_registro") === "ie" ? "cpf_ie" : "cpf_caf";
 
-  let tipoDocumento: "cnpj" | "cpf_caf" | "cpf_ie" = "cnpj";
+  let tipoDocumento: "cnpj" | "cpf" | "cpf_caf" | "cpf_ie" = pessoaFisica ? "cpf" : "cnpj";
+  const tamanho = pessoaFisica ? 11 : 14;
   if (!EXIGIR_DOCUMENTO) {
-    // Modo de testes: aceita qualquer número; sem 14 dígitos, gera um de teste.
-    if (documento.length !== 14) documento = documentoDeTeste();
-  } else if (documento.length === 11) {
-    if (!agricultor) return { erro: "Use o CNPJ da empresa. CPF só é aceito para agricultores." };
-    if (!cpfValido(documento)) return { erro: "CPF inválido." };
-    if (!registroRural) return { erro: "Informe o número do CAF ou da inscrição estadual de produtor rural." };
-    tipoDocumento = tipoRegistro;
-  } else if (!cnpjValido(documento)) {
+    // Modo de testes: aceita qualquer número; sem o tamanho certo, gera um de teste.
+    if (documento.length !== tamanho) documento = documentoDeTeste(tamanho);
+  } else if (pessoaFisica && !cpfValido(documento)) {
+    return { erro: "CPF inválido." };
+  } else if (!pessoaFisica && !cnpjValido(documento)) {
     return { erro: "CNPJ inválido." };
   }
+  if (pessoaFisica && agricultor && registroRural) tipoDocumento = tipoRegistro;
 
   const cidade = String(form.get("cidade") ?? "").trim();
   const uf = String(form.get("uf") ?? "").trim().toUpperCase();
@@ -53,9 +56,12 @@ export async function salvarEmpresa(_: EstadoCadastro, form: FormData): Promise<
     papel,
     tipo_documento: tipoDocumento,
     documento,
-    registro_rural: tipoDocumento === "cnpj" ? null : registroRural,
+    registro_rural: tipoDocumento === "cpf_caf" || tipoDocumento === "cpf_ie" ? registroRural : null,
     agricultor,
-    nome: String(form.get("nome") ?? "").trim(),
+    nome: (!pessoaFisica && nomeFantasia) || nomeCompleto,
+    nome_completo: nomeCompleto,
+    endereco: String(form.get("endereco") ?? "").trim() || null,
+    negocia_com: pessoaFisica ? "todos" : (["todos", "pj", "pf"].find((v) => v === form.get("negocia_com")) ?? "todos"),
     telefone: soDigitos(String(form.get("telefone") ?? "")),
     cidade,
     uf,

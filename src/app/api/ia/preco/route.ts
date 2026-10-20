@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   if (!iaDisponivel()) return NextResponse.json({ erro: "A IA não está configurada neste servidor." }, { status: 503 });
 
   const { data: empresa } = await supabase.from("empresas").select("cidade, uf").eq("id", user.id).single<Pick<Empresa, "cidade" | "uf">>();
-  if (!empresa) return NextResponse.json({ erro: "Cadastre sua empresa primeiro." }, { status: 400 });
+  if (!empresa) return NextResponse.json({ erro: "Complete seu cadastro primeiro." }, { status: 400 });
 
   const corpo = (await request.json()) as {
     produto?: string;

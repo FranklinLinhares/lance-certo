@@ -13,8 +13,9 @@ export default async function Cadastro() {
 
   return (
     <div className="mx-auto max-w-xl space-y-4">
-      <h1 className="text-2xl font-bold">{empresa ? "Dados da empresa" : "Cadastre sua empresa"}</h1>
-      <FormularioEmpresa empresa={empresa} />
+      <h1 className="text-2xl font-bold">{empresa ? "Meu cadastro" : "Complete seu cadastro"}</h1>
+      <p className="text-stone-600">Uma conta só para comprar e vender.</p>
+      <FormularioEmpresa empresa={empresa} email={user.email ?? ""} />
     </div>
   );
 }

@@ -15,7 +15,9 @@ await db.exec(`
   create publication supabase_realtime;
   grant usage on schema public, auth to authenticated;
 `);
-await db.exec(readFileSync(new URL("../migrations/0001_inicial.sql", import.meta.url), "utf8"));
+for (const arquivo of ["0001_inicial.sql", "0002_cadastro_unico.sql"]) {
+  await db.exec(readFileSync(new URL(`../migrations/${arquivo}`, import.meta.url), "utf8"));
+}
 await db.exec(`grant select, insert, update, delete on all tables in schema public to authenticated;`);
 
 const ids = {
@@ -48,12 +50,19 @@ async function falha(uid, sql, params, trecho) {
   });
 }
 
-// Comprador com CPF é recusado.
+// CPF com CAF exige o número do registro rural.
 await assert.rejects(db.exec(`
   insert into auth.users values ('00000000-0000-0000-0000-000000000009');
   insert into empresas (id, papel, tipo_documento, documento, nome, telefone, cidade, uf, lat, lng)
   values ('00000000-0000-0000-0000-000000000009', 'comprador', 'cpf_caf', '12345678909', 'X', '1', 'X', 'PB', 0, 0);
 `), /documento_valido/);
+// Pessoa física compra com CPF (cadastro único).
+ids.pessoa = "00000000-0000-0000-0000-000000000005"; // João Pessoa
+await db.exec(`
+  insert into auth.users values ('${ids.pessoa}');
+  insert into empresas (id, papel, tipo_documento, documento, nome, nome_completo, telefone, cidade, uf, lat, lng, raio_km)
+  values ('${ids.pessoa}', 'comprador', 'cpf', '52998224725', 'Maria Souza', 'Maria Souza', '83999990005', 'João Pessoa', 'PB', -7.12, -34.85, 60);
+`);
 
 // Ofertas na vitrine.
 await como(ids.atacado, `insert into ofertas (fornecedor_id, produto, produto_chave, categoria, unidade, preco_unitario, quantidade_disponivel)
@@ -69,6 +78,18 @@ await falha(ids.restaurante, `insert into ofertas (fornecedor_id, produto, produ
 const vitrine = await como(ids.restaurante, `select fornecedor_nome, preco_unitario from buscar_ofertas('tomate')`);
 assert.deepEqual(vitrine.rows.map((r) => r.fornecedor_nome), ["Sítio Boa Vista", "Atacado Litoral"],
   "a distribuidora de Campina Grande fica fora do raio");
+
+// Pessoa física também vê a vitrine.
+assert.equal((await como(ids.pessoa, `select * from buscar_ofertas('tomate')`)).rows.length, 2);
+// Fornecedor que só vende para empresas some da vitrine da pessoa física.
+await db.exec(`update empresas set negocia_com = 'pj' where id = '${ids.atacado}'`);
+assert.deepEqual((await como(ids.pessoa, `select fornecedor_nome from buscar_ofertas('tomate')`)).rows.map((r) => r.fornecedor_nome), ["Sítio Boa Vista"]);
+assert.equal((await como(ids.restaurante, `select * from buscar_ofertas('tomate')`)).rows.length, 2, "o restaurante tem CNPJ");
+await db.exec(`update empresas set negocia_com = 'todos' where id = '${ids.atacado}'`);
+// Quem troca para o modo Comprar não vê as próprias ofertas para comprar.
+await db.exec(`update empresas set papel = 'comprador' where id = '${ids.atacado}'`);
+assert.ok(!(await como(ids.atacado, `select fornecedor_nome from buscar_ofertas('tomate')`)).rows.some((r) => r.fornecedor_nome === "Atacado Litoral"));
+await db.exec(`update empresas set papel = 'fornecedor' where id = '${ids.atacado}'`);
 
 // Pedido aberto (lances visíveis) e pedido fechado (lances ocultos).
 const amanha = "now() + interval '1 day'";

@@ -18,16 +18,27 @@ export const UNIDADES = {
 } as const;
 export type Unidade = keyof typeof UNIDADES;
 
+// Modo atual da conta: a mesma pessoa compra ou vende e troca quando quiser.
 export type Papel = "comprador" | "fornecedor";
+
+export const NEGOCIA_COM = {
+  todos: "Empresas e pessoas físicas",
+  pj: "Só empresas (CNPJ)",
+  pf: "Só pessoas físicas (CPF)",
+} as const;
+export type NegociaCom = keyof typeof NEGOCIA_COM;
 
 export type Empresa = {
   id: string;
   papel: Papel;
-  tipo_documento: "cnpj" | "cpf_caf" | "cpf_ie";
+  tipo_documento: "cnpj" | "cpf" | "cpf_caf" | "cpf_ie";
   documento: string;
   registro_rural: string | null;
   agricultor: boolean;
-  nome: string;
+  nome: string; // nome fantasia da empresa, ou o nome da pessoa física
+  nome_completo: string | null;
+  endereco: string | null;
+  negocia_com: NegociaCom;
   telefone: string;
   cidade: string;
   uf: string;
