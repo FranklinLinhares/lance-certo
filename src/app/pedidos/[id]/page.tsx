@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { exigirEmpresa } from "@/lib/sessao";
 import { CATEGORIAS, dataHora, porUnidade, reais, type Categoria, type ReferenciaPreco as Referencia, type Unidade } from "@/lib/dominio";
 import { ReferenciaPreco } from "@/components/ReferenciaPreco";
+import { SeloPreco } from "@/components/SeloPreco";
+import { mediaParaPedido } from "@/lib/escudo";
 import { cancelarPedido, escolherVencedor } from "../acoes";
 import { AoVivo } from "./AoVivo";
 import { DarLance } from "./DarLance";
@@ -10,6 +12,7 @@ type Pedido = {
   id: string;
   comprador_id: string;
   produto: string;
+  produto_chave: string;
   categoria: Categoria;
   unidade: Unidade;
   quantidade: number;
@@ -53,6 +56,13 @@ export default async function DetalhePedido({ params }: PageProps<"/pedidos/[id]
     .order("preco_unitario")
     .order("criado_em");
   const lances = (data ?? []) as Lance[];
+
+  // Escudo de preço: ofertas do mesmo produto na vitrine perto de quem vê a página.
+  const { data: ofertas } = await supabase.rpc("buscar_ofertas", { termo: pedido.produto_chave });
+  const precosOfertas = ((ofertas ?? []) as { produto_chave: string; unidade: Unidade; preco_unitario: number }[])
+    .filter((o) => o.produto_chave === pedido.produto_chave && o.unidade === pedido.unidade)
+    .map((o) => Number(o.preco_unitario));
+  const mercado = mediaParaPedido(precosOfertas, pedido.referencia_preco, pedido.unidade);
 
   const souComprador = pedido.comprador_id === empresa.id;
   const u = pedido.unidade;
@@ -108,7 +118,7 @@ export default async function DetalhePedido({ params }: PageProps<"/pedidos/[id]
         </div>
       )}
 
-      {!souComprador && empresa.papel === "fornecedor" && aberto && <DarLance pedido={id} unidade={u} dica={dica} />}
+      {!souComprador && empresa.papel === "fornecedor" && aberto && <DarLance pedido={id} unidade={u} dica={dica} mercado={mercado} />}
 
       <section className="cartao space-y-2">
         <h2 className="font-semibold">
@@ -122,6 +132,7 @@ export default async function DetalhePedido({ params }: PageProps<"/pedidos/[id]
               <li key={l.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                 <div>
                   <span className="font-semibold">{i + 1}º · {porUnidade(l.preco_unitario, u)}</span>
+                  {(souComprador || meu) && <span className="ml-2"><SeloPreco preco={l.preco_unitario} mercado={mercado} unidade={u} /></span>}
                   <span className="ml-2 text-sm text-stone-500">
                     {souComprador ? `${l.fornecedor?.nome} (${l.fornecedor?.cidade})` : meu ? "Seu lance" : "Concorrente"}
                     {l.fornecedor?.agricultor && souComprador && " · agricultor"}
@@ -140,6 +151,9 @@ export default async function DetalhePedido({ params }: PageProps<"/pedidos/[id]
             );
           })}
         </ol>
+        {souComprador && mercado && lances.length > 0 && (
+          <p className="text-xs text-stone-500">Os selos comparam cada lance com a {mercado.fonte}: {porUnidade(mercado.media, u)}.</p>
+        )}
         {souComprador && <p className="text-xs text-stone-500">Total do menor lance: {menor ? reais(Number(menor.preco_unitario) * Number(pedido.quantidade)) : "–"}</p>}
       </section>
 

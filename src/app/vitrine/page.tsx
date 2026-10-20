@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { exigirEmpresa } from "@/lib/sessao";
 import { CATEGORIAS, porUnidade, type Categoria, type Unidade } from "@/lib/dominio";
+import { SeloPreco } from "@/components/SeloPreco";
+import { mediaDasOfertas } from "@/lib/escudo";
 import { Comprar } from "./Comprar";
 
 type Oferta = {
@@ -70,6 +72,7 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
         const precos = lista.map((o) => Number(o.preco_unitario));
         const u = lista[0].unidade;
         const media = precos.reduce((a, b) => a + b, 0) / precos.length;
+        const mercado = mediaDasOfertas(precos);
         return (
           <section key={`${lista[0].produto_chave}|${u}`} className="cartao space-y-3">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -96,7 +99,10 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
                       </div>
                       {o.descricao && <div className="text-sm">{o.descricao}</div>}
                     </div>
-                    <div className="font-bold text-green-800">{porUnidade(o.preco_unitario, u)}</div>
+                    <div className="text-right">
+                      <div className="font-bold text-green-800">{porUnidade(o.preco_unitario, u)}</div>
+                      <SeloPreco preco={o.preco_unitario} mercado={mercado} unidade={u} />
+                    </div>
                   </div>
                   {empresa.papel === "comprador" && (
                     <Comprar oferta={o.id} maximo={Number(o.quantidade_disponivel)} unidade={u} telefone={telefoneDe[o.fornecedor_id] ?? ""} />
