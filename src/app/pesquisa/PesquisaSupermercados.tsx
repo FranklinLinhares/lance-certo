@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { UNIDADES, porUnidade, type Unidade } from "@/lib/dominio";
 import type { PesquisaSupermercados as Resultado } from "@/lib/ia";
+import { Girando } from "@/components/Girando";
 
 const FONTES = { site: "Site", encarte: "Encarte", aplicativo: "Aplicativo", outro: "Outro" } as const;
 
@@ -50,7 +51,7 @@ export function PesquisaSupermercados({ raioInicial, produtoInicial }: { raioIni
             <input id="raio_km" name="raio_km" type="number" min={1} max={200} defaultValue={raioInicial} className="campo" />
           </div>
         </div>
-        <button disabled={pesquisando} className="botao w-full">{pesquisando ? "Pesquisando... (pode levar até 1 minuto)" : "Pesquisar com IA"}</button>
+        <button disabled={pesquisando} className="botao w-full">{pesquisando ? <Girando texto="Pesquisando... (pode levar até 1 minuto)" /> : "Pesquisar com IA"}</button>
         {erro && <p className="erro">{erro}</p>}
       </form>
 
