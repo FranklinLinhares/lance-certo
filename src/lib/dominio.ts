@@ -21,12 +21,13 @@ export type Unidade = keyof typeof UNIDADES;
 // Modo atual da conta: a mesma pessoa compra ou vende e troca quando quiser.
 export type Papel = "comprador" | "fornecedor";
 
-export const NEGOCIA_COM = {
+// Para quem uma oferta é vendida.
+export const PUBLICO = {
   todos: "Empresas e pessoas físicas",
   pj: "Só empresas (CNPJ)",
   pf: "Só pessoas físicas (CPF)",
 } as const;
-export type NegociaCom = keyof typeof NEGOCIA_COM;
+export type Publico = keyof typeof PUBLICO;
 
 export type Empresa = {
   id: string;
@@ -38,7 +39,7 @@ export type Empresa = {
   nome: string; // nome fantasia da empresa, ou o nome da pessoa física
   nome_completo: string | null;
   endereco: string | null;
-  negocia_com: NegociaCom;
+  negocia_com: Publico;
   telefone: string;
   cidade: string;
   uf: string;

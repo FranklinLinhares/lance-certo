@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { publicarOferta, type EstadoOferta } from "../acoes";
 import { AssistenteIA, type ItemIA } from "@/components/AssistenteIA";
-import { CATEGORIAS, UNIDADES } from "@/lib/dominio";
+import { CATEGORIAS, PUBLICO, UNIDADES } from "@/lib/dominio";
 
 export default function NovaOferta() {
   const [estado, acao, enviando] = useActionState<EstadoOferta, FormData>(publicarOferta, {});
@@ -60,6 +60,12 @@ export default function NovaOferta() {
             <input id="disponivel_a_partir" name="disponivel_a_partir" type="date" className="campo" />
             <p className="mt-1 text-xs text-stone-500">Para ofertas de safra ainda não colhida.</p>
           </div>
+        </div>
+        <div>
+          <label className="rotulo" htmlFor="vende_para">Vender para</label>
+          <select id="vende_para" name="vende_para" defaultValue="todos" className="campo">
+            {Object.entries(PUBLICO).map(([v, n]) => <option key={v} value={v}>{n}</option>)}
+          </select>
         </div>
         <div>
           <label className="rotulo" htmlFor="dias_oferta">A oferta vale por</label>

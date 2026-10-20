@@ -79,7 +79,7 @@ async function Menu() {
             ))}
           </form>
         )}
-        {empresa && <Link href="/cadastro" className="hidden text-stone-500 hover:text-green-800 sm:inline">{empresa.nome}</Link>}
+        {empresa && <Link href="/cadastro" className="max-w-[9rem] truncate text-stone-500 hover:text-green-800 sm:max-w-none">{empresa.nome}</Link>}
         {user ? (
           <form action={sair}>
             <button className="text-stone-600 hover:text-red-700">Sair</button>

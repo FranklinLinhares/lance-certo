@@ -61,7 +61,6 @@ export async function salvarEmpresa(_: EstadoCadastro, form: FormData): Promise<
     nome: (!pessoaFisica && nomeFantasia) || nomeCompleto,
     nome_completo: nomeCompleto,
     endereco: String(form.get("endereco") ?? "").trim() || null,
-    negocia_com: pessoaFisica ? "todos" : (["todos", "pj", "pf"].find((v) => v === form.get("negocia_com")) ?? "todos"),
     telefone: soDigitos(String(form.get("telefone") ?? "")),
     cidade,
     uf,

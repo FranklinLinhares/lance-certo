@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { salvarEmpresa, type EstadoCadastro } from "./acoes";
-import { CATEGORIAS, NEGOCIA_COM, type Empresa } from "@/lib/dominio";
+import { CATEGORIAS, type Empresa } from "@/lib/dominio";
 import { EXIGIR_DOCUMENTO } from "@/lib/documentos";
 
 function Escolha<T extends string>({ nome, opcoes, valor, aoMudar }: { nome: string; opcoes: [T, string][]; valor: T; aoMudar: (v: T) => void }) {
@@ -65,16 +65,6 @@ export function FormularioEmpresa({ empresa, email }: { empresa: Empresa | null;
         <input id="documento" name="documento" required={EXIGIR_DOCUMENTO} inputMode="numeric" defaultValue={empresa?.documento} className="campo" />
         {!EXIGIR_DOCUMENTO && <p className="mt-1 text-sm text-stone-500">Opcional durante os testes.</p>}
       </div>
-
-      {!pf && (
-        <div>
-          <label className="rotulo" htmlFor="negocia_com">Quer negociar com</label>
-          <select id="negocia_com" name="negocia_com" defaultValue={empresa?.negocia_com ?? "todos"} className="campo">
-            {Object.entries(NEGOCIA_COM).map(([v, n]) => <option key={v} value={v}>{n}</option>)}
-          </select>
-          <p className="mt-1 text-sm text-stone-500">Vale para comprar e para vender.</p>
-        </div>
-      )}
 
       <label className="flex items-center gap-2">
         <input type="checkbox" name="agricultor" checked={agricultor} onChange={(e) => setAgricultor(e.target.checked)} />
