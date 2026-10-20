@@ -7,43 +7,92 @@ import { CATEGORIAS, PUBLICO, UNIDADES, chaveDoProduto } from "@/lib/dominio";
 
 export type EstadoOferta = { erro?: string };
 
-export async function publicarOferta(_: EstadoOferta, form: FormData): Promise<EstadoOferta> {
-  const { supabase, empresa } = await exigirEmpresa();
-  if (empresa.papel !== "fornecedor") return { erro: "Mude para o modo Vender, no menu, para publicar ofertas." };
-
+// Lê e confere os campos do formulário da oferta (CamposOferta).
+function lerCampos(form: FormData) {
   const produto = String(form.get("produto") ?? "").trim();
   const categoria = String(form.get("categoria"));
   const unidade = String(form.get("unidade"));
   const preco = Number(String(form.get("preco_unitario")).replace(",", "."));
   const quantidade = Number(String(form.get("quantidade_disponivel")).replace(",", "."));
-  const diasValidaOferta = Number(form.get("dias_oferta")) || 7;
   const vendePara = String(form.get("vende_para"));
 
   if (!produto) return { erro: "Informe o produto." };
   if (!(categoria in CATEGORIAS) || !(unidade in UNIDADES)) return { erro: "Escolha a categoria e a unidade." };
   if (!(preco > 0) || !(quantidade > 0)) return { erro: "Informe preço e quantidade maiores que zero." };
 
+  return {
+    campos: {
+      produto,
+      categoria,
+      unidade,
+      preco_unitario: preco,
+      quantidade_disponivel: quantidade,
+      validade: form.get("validade") || null,
+      disponivel_a_partir: form.get("disponivel_a_partir") || null,
+      descricao: String(form.get("descricao") ?? "").trim() || null,
+      vende_para: vendePara in PUBLICO ? vendePara : "todos",
+    },
+  };
+}
+
+export async function publicarOferta(_: EstadoOferta, form: FormData): Promise<EstadoOferta> {
+  const { supabase, empresa } = await exigirEmpresa();
+  if (empresa.papel !== "fornecedor") return { erro: "Mude para o modo Vender, no menu, para publicar ofertas." };
+
+  const { campos, erro } = lerCampos(form);
+  if (!campos) return { erro };
+  const diasValidaOferta = Number(form.get("dias_oferta")) || 7;
+
   const { error } = await supabase.from("ofertas").insert({
+    ...campos,
     fornecedor_id: empresa.id,
-    produto,
-    produto_chave: String(form.get("produto_chave") || "") || chaveDoProduto(produto),
-    categoria,
-    unidade,
-    preco_unitario: preco,
-    quantidade_disponivel: quantidade,
-    validade: form.get("validade") || null,
-    disponivel_a_partir: form.get("disponivel_a_partir") || null,
+    produto_chave: String(form.get("produto_chave") || "") || chaveDoProduto(campos.produto),
     valida_ate: new Date(Date.now() + diasValidaOferta * 86_400_000).toISOString(),
-    descricao: String(form.get("descricao") ?? "").trim() || null,
-    vende_para: vendePara in PUBLICO ? vendePara : "todos",
   });
   if (error) return { erro: error.message };
   revalidatePath("/ofertas");
   redirect("/ofertas");
 }
 
+export async function editarOferta(_: EstadoOferta, form: FormData): Promise<EstadoOferta> {
+  const { supabase, empresa } = await exigirEmpresa();
+  const id = String(form.get("id"));
+  const { campos, erro } = lerCampos(form);
+  if (!campos) return { erro };
+
+  // Prorrogar: conta os dias a partir de agora. "0" mantém o prazo atual.
+  const prorrogar = Number(form.get("dias_oferta")) || 0;
+  const { data, error } = await supabase
+    .from("ofertas")
+    .update({
+      ...campos,
+      // A chave agrupa ofertas iguais na vitrine; só muda se o nome do produto mudou.
+      produto_chave:
+        campos.produto === form.get("produto_original") ? String(form.get("produto_chave")) : chaveDoProduto(campos.produto),
+      ...(prorrogar > 0 && { valida_ate: new Date(Date.now() + prorrogar * 86_400_000).toISOString(), ativa: true }),
+    })
+    .eq("id", id)
+    .eq("fornecedor_id", empresa.id)
+    .select("id");
+  if (error) return { erro: error.message };
+  if (!data?.length) return { erro: "Oferta não encontrada." };
+  revalidatePath("/ofertas");
+  revalidatePath("/vitrine");
+  redirect(empresa.papel === "fornecedor" ? "/ofertas" : "/vitrine");
+}
+
 export async function encerrarOferta(form: FormData) {
   const { supabase, empresa } = await exigirEmpresa();
   await supabase.from("ofertas").update({ ativa: false }).eq("id", String(form.get("id"))).eq("fornecedor_id", empresa.id);
   revalidatePath("/ofertas");
+  revalidatePath("/vitrine");
+}
+
+// Exclui de vez. As compras já feitas continuam no histórico, sem o vínculo com a oferta.
+export async function excluirOferta(form: FormData) {
+  const { supabase, empresa } = await exigirEmpresa();
+  await supabase.from("ofertas").delete().eq("id", String(form.get("id"))).eq("fornecedor_id", empresa.id);
+  revalidatePath("/ofertas");
+  revalidatePath("/vitrine");
+  redirect(empresa.papel === "fornecedor" ? "/ofertas" : "/vitrine");
 }

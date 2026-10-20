@@ -26,8 +26,12 @@ export function Comprar({ oferta, maximo, unidade, telefone, fornecedor }: { ofe
   return (
     <form action={acao} className="flex flex-wrap items-center gap-2 text-sm">
       <input type="hidden" name="oferta" value={oferta} />
-      <input name="quantidade" type="number" step="any" min={0} max={maximo} required placeholder={unidade} className="campo w-24 py-1" />
-      <button disabled={enviando} className="botao py-1">Comprar</button>
+      <label className="flex items-center gap-1">
+        Quantidade
+        <input name="quantidade" type="number" step="any" min={0} max={maximo} required defaultValue={Math.min(1, maximo)} className="campo w-24 py-1" />
+        {unidade}
+      </label>
+      <button disabled={enviando} className="botao py-1">{enviando ? "Comprando..." : "Comprar"}</button>
       {estado.erro && <span className="text-red-700">{estado.erro}</span>}
     </form>
   );

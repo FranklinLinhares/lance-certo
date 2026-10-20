@@ -15,7 +15,7 @@ await db.exec(`
   create publication supabase_realtime;
   grant usage on schema public, auth to authenticated;
 `);
-for (const arquivo of ["0001_inicial.sql", "0002_cadastro_unico.sql", "0003_ofertas_vende_para.sql", "0004_avaliacoes.sql"]) {
+for (const arquivo of ["0001_inicial.sql", "0002_cadastro_unico.sql", "0003_ofertas_vende_para.sql", "0004_avaliacoes.sql", "0005_excluir_ofertas.sql"]) {
   await db.exec(readFileSync(new URL(`../migrations/${arquivo}`, import.meta.url), "utf8"));
 }
 await db.exec(`grant select, insert, update, delete on all tables in schema public to authenticated;`);
@@ -183,5 +183,19 @@ assert.equal(Number(doRestaurante.compras), 2, "uma compra no leilão e uma na v
 // Ninguém grava avaliação direto na tabela.
 await falha(ids.restaurante, `insert into avaliacoes (compra_id, avaliador_id, avaliado_id, avaliado_como, nota) values ($1, $2, $3, 'vendedor', 5)`,
   [compraVitrine, ids.restaurante, ids.atacado], /row-level security/);
+
+// Editar e excluir ofertas: só o próprio vendedor.
+await como(ids.atacado, `update ofertas set ativa = false where id = $1`, [ofertaAgricultor]);
+await como(ids.atacado, `delete from ofertas where id = $1`, [ofertaAgricultor]);
+assert.equal((await db.query(`select ativa from ofertas where id = $1`, [ofertaAgricultor])).rows[0].ativa, true,
+  "outro vendedor não altera nem exclui a oferta");
+await como(ids.agricultor, `update ofertas set preco_unitario = 3.50 where id = $1`, [ofertaAgricultor]);
+assert.equal(Number((await db.query(`select preco_unitario p from ofertas where id = $1`, [ofertaAgricultor])).rows[0].p), 3.5);
+await como(ids.agricultor, `delete from ofertas where id = $1`, [ofertaAgricultor]);
+assert.equal((await db.query(`select 1 from ofertas where id = $1`, [ofertaAgricultor])).rows.length, 0);
+// A compra feita antes continua no histórico, e a avaliação também.
+const compraMantida = (await db.query(`select oferta_id from compras where id = $1`, [compraVitrine])).rows[0];
+assert.equal(compraMantida.oferta_id, null);
+assert.equal((await db.query(`select 1 from avaliacoes where compra_id = $1`, [compraVitrine])).rows.length, 2);
 
 console.log("Todos os testes do banco passaram.");
