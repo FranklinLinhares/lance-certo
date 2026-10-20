@@ -14,7 +14,7 @@ const numero = (v: FormDataEntryValue | null) => {
 
 export async function criarPedido(_: EstadoForm, form: FormData): Promise<EstadoForm> {
   const { supabase, empresa } = await exigirEmpresa();
-  if (empresa.papel !== "comprador") return { erro: "Apenas compradores criam leilões." };
+  if (empresa.papel !== "comprador") return { erro: "Mude para o modo Comprar, no menu, para criar leilões." };
 
   const produto = String(form.get("produto") ?? "").trim();
   const categoria = String(form.get("categoria"));

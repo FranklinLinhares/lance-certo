@@ -30,8 +30,8 @@ export function cpfValido(valor: string) {
 // Para voltar a exigir, crie na Vercel a variável NEXT_PUBLIC_EXIGIR_DOCUMENTO=sim e faça Redeploy.
 export const EXIGIR_DOCUMENTO = process.env.NEXT_PUBLIC_EXIGIR_DOCUMENTO === "sim";
 
-// Número de 14 dígitos para quem testa sem CNPJ. Começa com 000 para ser fácil de achar e apagar depois.
-export function documentoDeTeste() {
-  const aleatorio = Array.from(crypto.getRandomValues(new Uint8Array(11)), (n) => n % 10).join("");
+// Número de CPF (11) ou CNPJ (14) para quem testa sem documento. Começa com 000 para ser fácil de achar e apagar depois.
+export function documentoDeTeste(tamanho: 11 | 14) {
+  const aleatorio = Array.from(crypto.getRandomValues(new Uint8Array(tamanho - 3)), (n) => n % 10).join("");
   return `000${aleatorio}`;
 }

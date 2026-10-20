@@ -9,7 +9,7 @@ export type EstadoOferta = { erro?: string };
 
 export async function publicarOferta(_: EstadoOferta, form: FormData): Promise<EstadoOferta> {
   const { supabase, empresa } = await exigirEmpresa();
-  if (empresa.papel !== "fornecedor") return { erro: "Apenas fornecedores publicam ofertas." };
+  if (empresa.papel !== "fornecedor") return { erro: "Mude para o modo Vender, no menu, para publicar ofertas." };
 
   const produto = String(form.get("produto") ?? "").trim();
   const categoria = String(form.get("categoria"));

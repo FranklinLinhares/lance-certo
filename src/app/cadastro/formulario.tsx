@@ -2,17 +2,33 @@
 
 import { useActionState, useState } from "react";
 import { salvarEmpresa, type EstadoCadastro } from "./acoes";
-import { CATEGORIAS, type Empresa } from "@/lib/dominio";
+import { CATEGORIAS, NEGOCIA_COM, type Empresa } from "@/lib/dominio";
 import { EXIGIR_DOCUMENTO } from "@/lib/documentos";
 
-export function FormularioEmpresa({ empresa }: { empresa: Empresa | null }) {
+function Escolha<T extends string>({ nome, opcoes, valor, aoMudar }: { nome: string; opcoes: [T, string][]; valor: T; aoMudar: (v: T) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {opcoes.map(([v, rotulo]) => (
+        <label key={v} className={`cursor-pointer rounded-lg border px-3 py-2 text-center ${valor === v ? "border-green-700 bg-green-50 font-semibold" : "border-stone-300"}`}>
+          <input type="radio" name={nome} value={v} checked={valor === v} onChange={() => aoMudar(v)} className="sr-only" />
+          {rotulo}
+        </label>
+      ))}
+    </div>
+  );
+}
+
+// Cadastro único: a mesma conta compra e vende, com CPF ou CNPJ.
+export function FormularioEmpresa({ empresa, email }: { empresa: Empresa | null; email: string }) {
   const [estado, acao, enviando] = useActionState<EstadoCadastro, FormData>(salvarEmpresa, {});
   const [papel, setPapel] = useState(empresa?.papel ?? "comprador");
+  const [pessoa, setPessoa] = useState<"pf" | "pj">(empresa && empresa.tipo_documento !== "cnpj" ? "pf" : "pj");
   const [agricultor, setAgricultor] = useState(empresa?.agricultor ?? false);
   const [local, setLocal] = useState<{ lat: number; lng: number } | null>(
     empresa ? { lat: empresa.lat, lng: empresa.lng } : null,
   );
   const [buscandoLocal, setBuscandoLocal] = useState(false);
+  const pf = pessoa === "pf";
 
   function usarMinhaLocalizacao() {
     setBuscandoLocal(true);
@@ -28,50 +44,67 @@ export function FormularioEmpresa({ empresa }: { empresa: Empresa | null }) {
   return (
     <form action={acao} className="cartao space-y-4">
       <fieldset>
-        <legend className="rotulo">Você quer</legend>
-        <div className="grid grid-cols-2 gap-2">
-          {(["comprador", "fornecedor"] as const).map((p) => (
-            <label key={p} className={`cursor-pointer rounded-lg border px-3 py-2 text-center ${papel === p ? "border-green-700 bg-green-50 font-semibold" : "border-stone-300"}`}>
-              <input type="radio" name="papel" value={p} checked={papel === p} onChange={() => setPapel(p)} className="sr-only" />
-              {p === "comprador" ? "Comprar" : "Vender"}
-            </label>
-          ))}
-        </div>
+        <legend className="rotulo">Você se cadastra como</legend>
+        <Escolha nome="pessoa" opcoes={[["pf", "Pessoa física (CPF)"], ["pj", "Empresa (CNPJ)"]]} valor={pessoa} aoMudar={setPessoa} />
       </fieldset>
 
-      {papel === "fornecedor" && (
-        <label className="flex items-center gap-2">
-          <input type="checkbox" name="agricultor" checked={agricultor} onChange={(e) => setAgricultor(e.target.checked)} />
-          Sou agricultor ou produtor rural
-        </label>
+      <div>
+        <label className="rotulo" htmlFor="nome_completo">Nome completo</label>
+        <input id="nome_completo" name="nome_completo" required defaultValue={empresa?.nome_completo ?? (pf ? empresa?.nome : "")} className="campo" />
+      </div>
+
+      {!pf && (
+        <div>
+          <label className="rotulo" htmlFor="nome_fantasia">Nome fantasia da empresa</label>
+          <input id="nome_fantasia" name="nome_fantasia" required defaultValue={empresa?.tipo_documento === "cnpj" ? empresa.nome : ""} className="campo" />
+        </div>
       )}
 
       <div>
-        <label className="rotulo" htmlFor="nome">{agricultor ? "Nome da propriedade ou produtor" : "Nome da empresa"}</label>
-        <input id="nome" name="nome" required defaultValue={empresa?.nome} className="campo" />
-      </div>
-
-      <div>
-        <label className="rotulo" htmlFor="documento">{agricultor ? "CNPJ ou CPF" : "CNPJ"}</label>
+        <label className="rotulo" htmlFor="documento">{pf ? "CPF" : "CNPJ"}</label>
         <input id="documento" name="documento" required={EXIGIR_DOCUMENTO} inputMode="numeric" defaultValue={empresa?.documento} className="campo" />
         {!EXIGIR_DOCUMENTO && <p className="mt-1 text-sm text-stone-500">Opcional durante os testes.</p>}
       </div>
 
-      {agricultor && (
+      {!pf && (
+        <div>
+          <label className="rotulo" htmlFor="negocia_com">Quer negociar com</label>
+          <select id="negocia_com" name="negocia_com" defaultValue={empresa?.negocia_com ?? "todos"} className="campo">
+            {Object.entries(NEGOCIA_COM).map(([v, n]) => <option key={v} value={v}>{n}</option>)}
+          </select>
+          <p className="mt-1 text-sm text-stone-500">Vale para comprar e para vender.</p>
+        </div>
+      )}
+
+      <label className="flex items-center gap-2">
+        <input type="checkbox" name="agricultor" checked={agricultor} onChange={(e) => setAgricultor(e.target.checked)} />
+        Sou agricultor ou produtor rural
+      </label>
+      {pf && agricultor && (
         <div className="grid grid-cols-[auto_1fr] gap-2">
           <select name="tipo_registro" defaultValue={empresa?.tipo_documento === "cpf_ie" ? "ie" : "caf"} className="campo">
             <option value="caf">CAF</option>
             <option value="ie">Inscrição estadual</option>
           </select>
-          <input name="registro_rural" placeholder="Número (obrigatório com CPF)" defaultValue={empresa?.registro_rural ?? ""} className="campo" />
+          <input name="registro_rural" placeholder="Número (opcional)" defaultValue={empresa?.registro_rural ?? ""} className="campo" />
         </div>
       )}
 
-      <div>
-        <label className="rotulo" htmlFor="telefone">WhatsApp</label>
-        <input id="telefone" name="telefone" required inputMode="tel" defaultValue={empresa?.telefone} className="campo" />
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div>
+          <label className="rotulo" htmlFor="telefone">WhatsApp</label>
+          <input id="telefone" name="telefone" required inputMode="tel" defaultValue={empresa?.telefone} className="campo" />
+        </div>
+        <div>
+          <label className="rotulo" htmlFor="email">E-mail</label>
+          <input id="email" value={email} readOnly className="campo bg-stone-100 text-stone-600" />
+        </div>
       </div>
 
+      <div>
+        <label className="rotulo" htmlFor="endereco">{pf ? "Endereço residencial" : "Endereço da empresa"}</label>
+        <input id="endereco" name="endereco" required placeholder="Rua, número, bairro" defaultValue={empresa?.endereco ?? ""} className="campo" />
+      </div>
       <div className="grid grid-cols-[1fr_5rem] gap-2">
         <div>
           <label className="rotulo" htmlFor="cidade">Cidade</label>
@@ -92,9 +125,7 @@ export function FormularioEmpresa({ empresa }: { empresa: Empresa | null }) {
       </div>
 
       <div>
-        <label className="rotulo" htmlFor="raio_km">
-          {papel === "comprador" ? "Comprar de fornecedores até quantos km?" : "Entregar até quantos km?"}
-        </label>
+        <label className="rotulo" htmlFor="raio_km">Comprar e entregar até quantos km?</label>
         <input id="raio_km" name="raio_km" type="number" min={1} max={500} defaultValue={empresa?.raio_km ?? 30} className="campo" />
       </div>
 
@@ -108,6 +139,12 @@ export function FormularioEmpresa({ empresa }: { empresa: Empresa | null }) {
             </label>
           ))}
         </div>
+      </fieldset>
+
+      <fieldset>
+        <legend className="rotulo">Começar</legend>
+        <Escolha nome="papel" opcoes={[["comprador", "Comprando"], ["fornecedor", "Vendendo"]]} valor={papel} aoMudar={setPapel} />
+        <p className="mt-1 text-sm text-stone-500">Você troca entre comprar e vender quando quiser, no menu.</p>
       </fieldset>
 
       {estado.erro && <p className="erro">{estado.erro}</p>}
