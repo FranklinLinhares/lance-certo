@@ -15,7 +15,7 @@ await db.exec(`
   create publication supabase_realtime;
   grant usage on schema public, auth to authenticated;
 `);
-for (const arquivo of ["0001_inicial.sql", "0002_cadastro_unico.sql"]) {
+for (const arquivo of ["0001_inicial.sql", "0002_cadastro_unico.sql", "0003_vitrine_sua_oferta.sql"]) {
   await db.exec(readFileSync(new URL(`../migrations/${arquivo}`, import.meta.url), "utf8"));
 }
 await db.exec(`grant select, insert, update, delete on all tables in schema public to authenticated;`);
@@ -86,9 +86,12 @@ await db.exec(`update empresas set negocia_com = 'pj' where id = '${ids.atacado}
 assert.deepEqual((await como(ids.pessoa, `select fornecedor_nome from buscar_ofertas('tomate')`)).rows.map((r) => r.fornecedor_nome), ["Sítio Boa Vista"]);
 assert.equal((await como(ids.restaurante, `select * from buscar_ofertas('tomate')`)).rows.length, 2, "o restaurante tem CNPJ");
 await db.exec(`update empresas set negocia_com = 'todos' where id = '${ids.atacado}'`);
-// Quem troca para o modo Comprar não vê as próprias ofertas para comprar.
+// No modo Comprar a conta vê a própria oferta, mas não consegue comprá-la.
 await db.exec(`update empresas set papel = 'comprador' where id = '${ids.atacado}'`);
-assert.ok(!(await como(ids.atacado, `select fornecedor_nome from buscar_ofertas('tomate')`)).rows.some((r) => r.fornecedor_nome === "Atacado Litoral"));
+assert.ok((await como(ids.atacado, `select fornecedor_nome from buscar_ofertas('tomate')`)).rows.some((r) => r.fornecedor_nome === "Atacado Litoral"),
+  "a própria oferta aparece na vitrine (marcada como sua no app)");
+const propria = (await db.query(`select id from ofertas where fornecedor_id = $1`, [ids.atacado])).rows[0].id;
+await falha(ids.atacado, `select comprar_oferta($1, 1)`, [propria], /fora do seu raio/);
 await db.exec(`update empresas set papel = 'fornecedor' where id = '${ids.atacado}'`);
 
 // Pedido aberto (lances visíveis) e pedido fechado (lances ocultos).

@@ -53,9 +53,16 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
         <input name="q" defaultValue={termo} placeholder="Buscar produto: tomate, arroz, frango..." className="campo" />
         <button className="botao">Buscar</button>
       </form>
-      <p className="text-sm text-stone-500">
-        Ofertas de fornecedores que entregam até você, dentro do seu raio de {empresa.raio_km} km.
-      </p>
+      {empresa.papel === "fornecedor" ? (
+        <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+          Você está no modo <strong>Vender</strong>: aqui aparecem as suas ofertas e as dos concorrentes perto de você.
+          Para comprar, troque para <strong>Comprar</strong> no menu.
+        </p>
+      ) : (
+        <p className="text-sm text-stone-500">
+          Ofertas de quem entrega até você, dentro do seu raio de {empresa.raio_km} km.
+        </p>
+      )}
 
       {grupos.size === 0 && (
         <div className="cartao space-y-2">
@@ -91,6 +98,7 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <div>
                       <span className="font-medium">{o.fornecedor_nome}</span>
+                      {o.fornecedor_id === empresa.id && <span className="ml-2 rounded-full bg-sky-100 px-2 py-0.5 text-xs text-sky-900">Sua oferta</span>}
                       {o.agricultor && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">Agricultura familiar</span>}
                       <div className="text-sm text-stone-500">
                         {o.cidade} · {o.distancia_km} km · {o.quantidade_disponivel} {u} disponíveis
@@ -104,7 +112,7 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
                       <SeloPreco preco={o.preco_unitario} mercado={mercado} unidade={u} />
                     </div>
                   </div>
-                  {empresa.papel === "comprador" && (
+                  {empresa.papel === "comprador" && o.fornecedor_id !== empresa.id && (
                     <Comprar oferta={o.id} maximo={Number(o.quantidade_disponivel)} unidade={u} telefone={telefoneDe[o.fornecedor_id] ?? ""} />
                   )}
                 </li>
