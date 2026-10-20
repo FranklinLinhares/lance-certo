@@ -3,6 +3,8 @@ import { exigirEmpresa } from "@/lib/sessao";
 import { CATEGORIAS, PUBLICO, porUnidade, type Categoria, type Publico, type Unidade } from "@/lib/dominio";
 import { SeloPreco } from "@/components/SeloPreco";
 import { mediaDasOfertas } from "@/lib/escudo";
+import { Estrelas } from "@/components/Estrelas";
+import { buscarReputacao } from "@/lib/reputacao";
 import { Comprar } from "./Comprar";
 
 type Oferta = {
@@ -40,6 +42,7 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
     .from("empresas")
     .select("id, telefone")
     .in("id", [...new Set(ofertas.map((o) => o.fornecedor_id))]);
+  const reputacao = await buscarReputacao(supabase, ofertas.map((o) => o.fornecedor_id));
   const telefoneDe = Object.fromEntries((telefones ?? []).map((t) => [t.id, t.telefone as string]));
 
   // Agrupa as ofertas do mesmo produto e unidade para comparar preços.
@@ -111,7 +114,8 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
                 <li key={o.id} className="space-y-1 py-2">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <div>
-                      <span className="font-medium">{o.fornecedor_nome}</span>
+                      <Link href={`/perfil/${o.fornecedor_id}`} className="font-medium hover:underline">{o.fornecedor_nome}</Link>
+                      <span className="ml-2"><Estrelas nota={reputacao.get(o.fornecedor_id)?.nota_vendedor} total={reputacao.get(o.fornecedor_id)?.avaliacoes_vendedor} /></span>
                       <span className="ml-2 rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-700">{o.fornecedor_pj ? "Empresa" : "Pessoa física"}</span>
                       {o.vende_para !== "todos" && <span className="ml-2 rounded-full bg-violet-100 px-2 py-0.5 text-xs text-violet-900">{PUBLICO[o.vende_para]}</span>}
                       {o.fornecedor_id === empresa.id && <span className="ml-2 rounded-full bg-sky-100 px-2 py-0.5 text-xs text-sky-900">Sua oferta</span>}
@@ -129,7 +133,7 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
                     </div>
                   </div>
                   {empresa.papel === "comprador" && o.fornecedor_id !== empresa.id && (
-                    <Comprar oferta={o.id} maximo={Number(o.quantidade_disponivel)} unidade={u} telefone={telefoneDe[o.fornecedor_id] ?? ""} />
+                    <Comprar oferta={o.id} maximo={Number(o.quantidade_disponivel)} unidade={u} telefone={telefoneDe[o.fornecedor_id] ?? ""} fornecedor={o.fornecedor_nome} />
                   )}
                 </li>
               ))}

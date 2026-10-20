@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { exigirEmpresa } from "@/lib/sessao";
 
@@ -10,5 +11,7 @@ export async function trocarModo(form: FormData) {
   if (papel !== empresa.papel) {
     await supabase.from("empresas").update({ papel }).eq("id", empresa.id);
   }
+  // O menu fica no layout; sem isso o botão continua marcado no modo antigo.
+  revalidatePath("/", "layout");
   redirect(papel === "fornecedor" ? "/pedidos" : "/vitrine");
 }
