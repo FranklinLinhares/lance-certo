@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { exigirEmpresa } from "@/lib/sessao";
-import { CATEGORIAS, porUnidade, type Categoria, type Unidade } from "@/lib/dominio";
+import { CATEGORIAS, PUBLICO, porUnidade, type Categoria, type Publico, type Unidade } from "@/lib/dominio";
 import { SeloPreco } from "@/components/SeloPreco";
 import { mediaDasOfertas } from "@/lib/escudo";
 import { Comprar } from "./Comprar";
@@ -10,6 +10,8 @@ type Oferta = {
   fornecedor_id: string;
   fornecedor_nome: string;
   agricultor: boolean;
+  fornecedor_pj: boolean;
+  vende_para: Publico;
   cidade: string;
   distancia_km: number;
   produto: string;
@@ -24,12 +26,16 @@ type Oferta = {
 };
 
 export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
-  const { q } = await searchParams;
+  const { q, de } = await searchParams;
   const termo = typeof q === "string" ? q.trim() : "";
+  // Filtro do comprador: ofertas de empresas (CNPJ), de pessoas físicas (CPF) ou de todos.
+  const origem = de === "pj" || de === "pf" ? de : "todos";
   const { supabase, empresa } = await exigirEmpresa();
 
   const { data } = await supabase.rpc("buscar_ofertas", { termo: termo || null });
-  const ofertas = (data ?? []) as Oferta[];
+  const ofertas = ((data ?? []) as Oferta[]).filter(
+    (o) => origem === "todos" || o.fornecedor_pj === (origem === "pj"),
+  );
   const { data: telefones } = await supabase
     .from("empresas")
     .select("id, telefone")
@@ -49,8 +55,13 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
         <h1 className="text-2xl font-bold">Vitrine</h1>
         {empresa.papel === "fornecedor" && <Link href="/ofertas/nova" className="botao">Anunciar produto</Link>}
       </div>
-      <form className="flex gap-2">
-        <input name="q" defaultValue={termo} placeholder="Buscar produto: tomate, arroz, frango..." className="campo" />
+      <form className="flex flex-wrap gap-2">
+        <input name="q" defaultValue={termo} placeholder="Buscar produto: tomate, arroz, frango..." className="campo min-w-48 flex-1" />
+        <select name="de" defaultValue={origem} aria-label="Ver ofertas de" className="campo w-auto">
+          <option value="todos">Todos</option>
+          <option value="pj">Empresas (CNPJ)</option>
+          <option value="pf">Pessoas físicas (CPF)</option>
+        </select>
         <button className="botao">Buscar</button>
       </form>
       {empresa.papel === "fornecedor" ? (
@@ -98,6 +109,8 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <div>
                       <span className="font-medium">{o.fornecedor_nome}</span>
+                      <span className="ml-2 rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-700">{o.fornecedor_pj ? "Empresa" : "Pessoa física"}</span>
+                      {o.vende_para !== "todos" && <span className="ml-2 rounded-full bg-violet-100 px-2 py-0.5 text-xs text-violet-900">{PUBLICO[o.vende_para]}</span>}
                       {o.fornecedor_id === empresa.id && <span className="ml-2 rounded-full bg-sky-100 px-2 py-0.5 text-xs text-sky-900">Sua oferta</span>}
                       {o.agricultor && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">Agricultura familiar</span>}
                       <div className="text-sm text-stone-500">

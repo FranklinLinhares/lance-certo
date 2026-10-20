@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { exigirEmpresa } from "@/lib/sessao";
-import { CATEGORIAS, UNIDADES, chaveDoProduto } from "@/lib/dominio";
+import { CATEGORIAS, PUBLICO, UNIDADES, chaveDoProduto } from "@/lib/dominio";
 
 export type EstadoOferta = { erro?: string };
 
@@ -17,6 +17,7 @@ export async function publicarOferta(_: EstadoOferta, form: FormData): Promise<E
   const preco = Number(String(form.get("preco_unitario")).replace(",", "."));
   const quantidade = Number(String(form.get("quantidade_disponivel")).replace(",", "."));
   const diasValidaOferta = Number(form.get("dias_oferta")) || 7;
+  const vendePara = String(form.get("vende_para"));
 
   if (!produto) return { erro: "Informe o produto." };
   if (!(categoria in CATEGORIAS) || !(unidade in UNIDADES)) return { erro: "Escolha a categoria e a unidade." };
@@ -34,6 +35,7 @@ export async function publicarOferta(_: EstadoOferta, form: FormData): Promise<E
     disponivel_a_partir: form.get("disponivel_a_partir") || null,
     valida_ate: new Date(Date.now() + diasValidaOferta * 86_400_000).toISOString(),
     descricao: String(form.get("descricao") ?? "").trim() || null,
+    vende_para: vendePara in PUBLICO ? vendePara : "todos",
   });
   if (error) return { erro: error.message };
   revalidatePath("/ofertas");
