@@ -34,6 +34,7 @@ export function DarLance({ pedido, unidade, dica, mercado }: { pedido: string; u
       )}
       <input name="observacao" placeholder="Observação (prazo de entrega, marca...)" className="campo" />
       {estado.erro && <p className="erro">{estado.erro}</p>}
+      {estado.ok && !estado.erro && <p className="text-sm font-medium text-green-800">{estado.ok}</p>}
       <button disabled={enviando} className="botao w-full">{enviando ? "Enviando..." : "Enviar lance"}</button>
     </form>
   );

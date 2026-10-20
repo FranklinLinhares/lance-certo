@@ -13,5 +13,8 @@ export async function trocarModo(form: FormData) {
   }
   // O menu fica no layout; sem isso o botão continua marcado no modo antigo.
   revalidatePath("/", "layout");
+  // "voltar" leva a pessoa de volta à página onde pediu a troca (ex.: um leilão).
+  const voltar = String(form.get("voltar") ?? "");
+  if (/^\/(?![/\\])/.test(voltar)) redirect(voltar);
   redirect(papel === "fornecedor" ? "/pedidos" : "/vitrine");
 }

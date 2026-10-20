@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { exigirEmpresa } from "@/lib/sessao";
 import { CATEGORIAS, UNIDADES, chaveDoProduto } from "@/lib/dominio";
 
-export type EstadoForm = { erro?: string };
+export type EstadoForm = { erro?: string; ok?: string };
 
 const numero = (v: FormDataEntryValue | null) => {
   const n = Number(String(v ?? "").replace(",", "."));
@@ -61,7 +61,7 @@ export async function darLance(_: EstadoForm, form: FormData): Promise<EstadoFor
   });
   if (error) return { erro: error.message };
   revalidatePath(`/pedidos/${pedido}`);
-  return {};
+  return { ok: `Lance de R$ ${preco.toFixed(2).replace(".", ",")} enviado.` };
 }
 
 export async function escolherVencedor(form: FormData) {

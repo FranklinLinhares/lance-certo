@@ -9,6 +9,7 @@ import { Estrelas } from "@/components/Estrelas";
 import { buscarReputacao } from "@/lib/reputacao";
 import { Avaliar } from "@/components/Avaliar";
 import { cancelarPedido, escolherVencedor } from "../acoes";
+import { trocarModo } from "@/app/cadastro/modo";
 import { AoVivo } from "./AoVivo";
 import { DarLance } from "./DarLance";
 
@@ -150,6 +151,14 @@ export default async function DetalhePedido({ params }: PageProps<"/pedidos/[id]
       )}
 
       {!souComprador && empresa.papel === "fornecedor" && aberto && <DarLance pedido={id} unidade={u} dica={dica} mercado={mercado} />}
+      {!souComprador && empresa.papel === "comprador" && aberto && (
+        <form action={trocarModo} className="aviso flex flex-wrap items-center justify-between gap-2">
+          <span>Você está no modo Comprar. Para dar lance neste leilão, mude para Vender.</span>
+          <input type="hidden" name="papel" value="fornecedor" />
+          <input type="hidden" name="voltar" value={`/pedidos/${id}`} />
+          <button className="botao py-1">Mudar para Vender</button>
+        </form>
+      )}
 
       <section className="cartao space-y-2">
         <h2 className="font-semibold">
