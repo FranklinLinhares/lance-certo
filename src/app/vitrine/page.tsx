@@ -6,6 +6,7 @@ import { mediaDasOfertas } from "@/lib/escudo";
 import { Estrelas } from "@/components/Estrelas";
 import { buscarReputacao } from "@/lib/reputacao";
 import { Comprar } from "./Comprar";
+import { ExcluirOferta } from "@/app/ofertas/ExcluirOferta";
 
 type Oferta = {
   id: string;
@@ -132,7 +133,13 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
                       <SeloPreco preco={o.preco_unitario} mercado={mercado} unidade={u} />
                     </div>
                   </div>
-                  {empresa.papel === "comprador" && o.fornecedor_id !== empresa.id && (
+                  {o.fornecedor_id === empresa.id ? (
+                    <div className="flex flex-wrap items-center gap-4 text-sm">
+                      <Link href={`/ofertas/${o.id}/editar`} className="font-medium text-green-800 hover:underline">Editar</Link>
+                      <ExcluirOferta id={o.id} />
+                      <span className="text-stone-500">Você não pode comprar a sua própria oferta.</span>
+                    </div>
+                  ) : empresa.papel === "comprador" && (
                     <Comprar oferta={o.id} maximo={Number(o.quantidade_disponivel)} unidade={u} telefone={telefoneDe[o.fornecedor_id] ?? ""} fornecedor={o.fornecedor_nome} />
                   )}
                 </li>

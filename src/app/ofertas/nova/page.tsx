@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { publicarOferta, type EstadoOferta } from "../acoes";
 import { AssistenteIA, type ItemIA } from "@/components/AssistenteIA";
-import { CATEGORIAS, PUBLICO, UNIDADES } from "@/lib/dominio";
+import { CamposOferta } from "../CamposOferta";
 
 export default function NovaOferta() {
   const [estado, acao, enviando] = useActionState<EstadoOferta, FormData>(publicarOferta, {});
@@ -22,51 +22,16 @@ export default function NovaOferta() {
       />
       <form key={versao} action={acao} className="cartao space-y-4">
         <input type="hidden" name="produto_chave" value={item.produto_chave ?? ""} />
-        <div>
-          <label className="rotulo" htmlFor="produto">Produto</label>
-          <input id="produto" name="produto" required defaultValue={item.produto} className="campo" />
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="rotulo" htmlFor="categoria">Categoria</label>
-            <select id="categoria" name="categoria" defaultValue={item.categoria} className="campo">
-              {Object.entries(CATEGORIAS).map(([v, n]) => <option key={v} value={v}>{n}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="rotulo" htmlFor="unidade">Unidade</label>
-            <select id="unidade" name="unidade" defaultValue={item.unidade} className="campo">
-              {Object.entries(UNIDADES).map(([v, n]) => <option key={v} value={v}>{n}</option>)}
-            </select>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="rotulo" htmlFor="preco_unitario">Preço por unidade (R$)</label>
-            <input id="preco_unitario" name="preco_unitario" required inputMode="decimal" defaultValue={item.preco_unitario ?? ""} className="campo" />
-          </div>
-          <div>
-            <label className="rotulo" htmlFor="quantidade_disponivel">Quantidade disponível</label>
-            <input id="quantidade_disponivel" name="quantidade_disponivel" required inputMode="decimal" defaultValue={item.quantidade ?? ""} className="campo" />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="rotulo" htmlFor="validade">Validade do produto</label>
-            <input id="validade" name="validade" type="date" className="campo" />
-          </div>
-          <div>
-            <label className="rotulo" htmlFor="disponivel_a_partir">Disponível a partir de</label>
-            <input id="disponivel_a_partir" name="disponivel_a_partir" type="date" className="campo" />
-            <p className="mt-1 text-xs text-stone-500">Para ofertas de safra ainda não colhida.</p>
-          </div>
-        </div>
-        <div>
-          <label className="rotulo" htmlFor="vende_para">Vender para</label>
-          <select id="vende_para" name="vende_para" defaultValue="todos" className="campo">
-            {Object.entries(PUBLICO).map(([v, n]) => <option key={v} value={v}>{n}</option>)}
-          </select>
-        </div>
+        <CamposOferta
+          valores={{
+            produto: item.produto,
+            categoria: item.categoria,
+            unidade: item.unidade,
+            preco_unitario: item.preco_unitario ?? "",
+            quantidade: item.quantidade ?? "",
+            descricao: item.especificacoes,
+          }}
+        />
         <div>
           <label className="rotulo" htmlFor="dias_oferta">A oferta vale por</label>
           <select id="dias_oferta" name="dias_oferta" defaultValue="7" className="campo">
@@ -75,10 +40,6 @@ export default function NovaOferta() {
             <option value="7">7 dias</option>
             <option value="30">30 dias</option>
           </select>
-        </div>
-        <div>
-          <label className="rotulo" htmlFor="descricao">Detalhes</label>
-          <textarea id="descricao" name="descricao" rows={2} defaultValue={item.especificacoes} className="campo" />
         </div>
         {estado.erro && <p className="erro">{estado.erro}</p>}
         <button disabled={enviando} className="botao w-full">{enviando ? "Publicando..." : "Publicar oferta"}</button>

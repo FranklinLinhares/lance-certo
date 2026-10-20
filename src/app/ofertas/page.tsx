@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { exigirEmpresa } from "@/lib/sessao";
 import { CATEGORIAS, PUBLICO, dataHora, porUnidade, type Categoria, type Publico, type Unidade } from "@/lib/dominio";
 import { encerrarOferta } from "./acoes";
+import { ExcluirOferta } from "./ExcluirOferta";
 
 type Oferta = {
   id: string;
@@ -77,12 +78,18 @@ export default async function MinhasOfertas() {
                 </ul>
               </div>
             )}
-            {o.ativa && (
-              <form action={encerrarOferta}>
-                <input type="hidden" name="id" value={o.id} />
-                <button className="text-sm text-red-700 hover:underline">Encerrar oferta</button>
-              </form>
-            )}
+            <div className="flex flex-wrap items-center gap-4 text-sm">
+              <Link href={`/ofertas/${o.id}/editar`} className="font-medium text-green-800 hover:underline">
+                {o.ativa ? "Editar" : "Editar e publicar de novo"}
+              </Link>
+              {o.ativa && (
+                <form action={encerrarOferta}>
+                  <input type="hidden" name="id" value={o.id} />
+                  <button className="text-stone-600 hover:underline">Encerrar oferta</button>
+                </form>
+              )}
+              <ExcluirOferta id={o.id} />
+            </div>
           </li>
         ))}
       </ul>
