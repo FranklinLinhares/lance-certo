@@ -58,7 +58,7 @@ export default async function DetalhePedido({ params }: PageProps<"/pedidos/[id]
   const lances = (data ?? []) as Lance[];
 
   // Escudo de preço: ofertas do mesmo produto na vitrine perto de quem vê a página.
-  const { data: ofertas } = await supabase.rpc("buscar_ofertas", { termo: pedido.produto_chave });
+  const { data: ofertas } = await supabase.rpc("vitrine_ofertas", { termo: pedido.produto_chave });
   const precosOfertas = ((ofertas ?? []) as { produto_chave: string; unidade: Unidade; preco_unitario: number }[])
     .filter((o) => o.produto_chave === pedido.produto_chave && o.unidade === pedido.unidade)
     .map((o) => Number(o.preco_unitario));

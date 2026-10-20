@@ -9,9 +9,9 @@ alter table ofertas
   add column if not exists vende_para text not null default 'todos'
     check (vende_para in ('todos', 'pj', 'pf'));
 
--- O retorno muda, então a função é recriada.
-drop function if exists buscar_ofertas(text);
-create function buscar_ofertas(termo text default null)
+-- Substitui buscar_ofertas na vitrine: devolve também o tipo de quem vende e
+-- o público da oferta. É uma função nova para não precisar apagar a antiga.
+create or replace function vitrine_ofertas(termo text default null)
 returns table (
   id uuid, fornecedor_id uuid, fornecedor_nome text, agricultor boolean,
   fornecedor_pj boolean, vende_para text,
@@ -45,8 +45,8 @@ as $$
     )
   order by o.produto_chave, o.preco_unitario
 $$;
-revoke execute on function buscar_ofertas from public;
-grant execute on function buscar_ofertas to authenticated;
+revoke execute on function vitrine_ofertas from public;
+grant execute on function vitrine_ofertas to authenticated;
 
 -- O comprador fecha negócio com uma oferta da vitrine.
 create or replace function comprar_oferta(p_oferta uuid, p_quantidade numeric)

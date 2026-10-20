@@ -32,7 +32,7 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
   const origem = de === "pj" || de === "pf" ? de : "todos";
   const { supabase, empresa } = await exigirEmpresa();
 
-  const { data } = await supabase.rpc("buscar_ofertas", { termo: termo || null });
+  const { data } = await supabase.rpc("vitrine_ofertas", { termo: termo || null });
   const ofertas = ((data ?? []) as Oferta[]).filter(
     (o) => origem === "todos" || o.fornecedor_pj === (origem === "pj"),
   );
