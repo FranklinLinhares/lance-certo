@@ -58,9 +58,7 @@ async function Menu() {
           {empresa.papel === "comprador" && (
             <Link href="/historico" className="hover:text-green-800">Meus preços</Link>
           )}
-          {empresa.papel === "fornecedor" && (
-            <Link href="/ofertas" className="hover:text-green-800">Minhas ofertas</Link>
-          )}
+          <Link href="/ofertas" className="hover:text-green-800">Minhas ofertas</Link>
           <Link href="/negocios" className="hover:text-green-800">Negócios</Link>
         </>
       )}

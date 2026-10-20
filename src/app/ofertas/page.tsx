@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { exigirEmpresa } from "@/lib/sessao";
 import { CATEGORIAS, PUBLICO, dataHora, porUnidade, type Categoria, type Publico, type Unidade } from "@/lib/dominio";
 import { encerrarOferta } from "./acoes";
@@ -21,7 +20,6 @@ type Oferta = {
 
 export default async function MinhasOfertas() {
   const { supabase, empresa } = await exigirEmpresa();
-  if (empresa.papel !== "fornecedor") redirect("/vitrine");
 
   const { data } = await supabase
     .from("ofertas")
@@ -46,7 +44,11 @@ export default async function MinhasOfertas() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Minhas ofertas</h1>
-        <Link href="/ofertas/nova" className="botao">Nova oferta</Link>
+        {empresa.papel === "fornecedor" ? (
+          <Link href="/ofertas/nova" className="botao">Nova oferta</Link>
+        ) : (
+          <span className="text-sm text-stone-500">Para anunciar, mude para Vender no menu.</span>
+        )}
       </div>
       {ofertas.length === 0 && <p className="text-stone-600">Você ainda não publicou ofertas.</p>}
       <ul className="space-y-3">
