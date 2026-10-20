@@ -6,7 +6,6 @@ import { mediaDasOfertas } from "@/lib/escudo";
 import { Estrelas } from "@/components/Estrelas";
 import { buscarReputacao } from "@/lib/reputacao";
 import { Comprar } from "./Comprar";
-import { ExcluirOferta } from "@/app/ofertas/ExcluirOferta";
 
 type Oferta = {
   id: string;
@@ -36,8 +35,9 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
   const { supabase, empresa } = await exigirEmpresa();
 
   const { data } = await supabase.rpc("vitrine_ofertas", { termo: termo || null });
+  // As próprias ofertas ficam em Minhas ofertas; a vitrine mostra só as de outras pessoas.
   const ofertas = ((data ?? []) as Oferta[]).filter(
-    (o) => origem === "todos" || o.fornecedor_pj === (origem === "pj"),
+    (o) => o.fornecedor_id !== empresa.id && (origem === "todos" || o.fornecedor_pj === (origem === "pj")),
   );
   const { data: telefones } = await supabase
     .from("empresas")
@@ -73,12 +73,12 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
       </form>
       {empresa.papel === "fornecedor" ? (
         <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-          Você está no modo <strong>Vender</strong>: aqui aparecem as suas ofertas e as dos concorrentes perto de você.
-          Para comprar, troque para <strong>Comprar</strong> no menu.
+          Você está no modo <strong>Vender</strong>: aqui aparecem as ofertas dos concorrentes perto de você. As suas ficam em{" "}
+          <Link href="/ofertas" className="underline">Minhas ofertas</Link>. Para comprar, troque para <strong>Comprar</strong> no menu.
         </p>
       ) : (
         <p className="text-sm text-stone-500">
-          Ofertas de quem entrega até você, dentro do seu raio de {empresa.raio_km} km.
+          Ofertas de outros vendedores que entregam até você, dentro do seu raio de {empresa.raio_km} km.
         </p>
       )}
 
@@ -119,7 +119,6 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
                       <span className="ml-2"><Estrelas nota={reputacao.get(o.fornecedor_id)?.nota_vendedor} total={reputacao.get(o.fornecedor_id)?.avaliacoes_vendedor} /></span>
                       <span className="ml-2 rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-700">{o.fornecedor_pj ? "Empresa" : "Pessoa física"}</span>
                       {o.vende_para !== "todos" && <span className="ml-2 rounded-full bg-violet-100 px-2 py-0.5 text-xs text-violet-900">{PUBLICO[o.vende_para]}</span>}
-                      {o.fornecedor_id === empresa.id && <span className="ml-2 rounded-full bg-sky-100 px-2 py-0.5 text-xs text-sky-900">Sua oferta</span>}
                       {o.agricultor && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">Agricultura familiar</span>}
                       <div className="text-sm text-stone-500">
                         {o.cidade} · {o.distancia_km} km · {o.quantidade_disponivel} {u} disponíveis
@@ -133,13 +132,7 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
                       <SeloPreco preco={o.preco_unitario} mercado={mercado} unidade={u} />
                     </div>
                   </div>
-                  {o.fornecedor_id === empresa.id ? (
-                    <div className="flex flex-wrap items-center gap-4 text-sm">
-                      <Link href={`/ofertas/${o.id}/editar`} className="font-medium text-green-800 hover:underline">Editar</Link>
-                      <ExcluirOferta id={o.id} />
-                      <span className="text-stone-500">Você não pode comprar a sua própria oferta.</span>
-                    </div>
-                  ) : empresa.papel === "comprador" && (
+                  {empresa.papel === "comprador" && (
                     <Comprar oferta={o.id} maximo={Number(o.quantidade_disponivel)} unidade={u} telefone={telefoneDe[o.fornecedor_id] ?? ""} fornecedor={o.fornecedor_nome} />
                   )}
                 </li>
