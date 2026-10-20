@@ -5,6 +5,7 @@ import { criarPedido, type EstadoForm } from "../acoes";
 import { AssistenteIA, type ItemIA } from "@/components/AssistenteIA";
 import { ReferenciaPreco } from "@/components/ReferenciaPreco";
 import { CATEGORIAS, UNIDADES, type ReferenciaPreco as Referencia } from "@/lib/dominio";
+import { Girando } from "@/components/Girando";
 
 export function FormularioPedido({ produtoInicial }: { produtoInicial: string }) {
   const [estado, acao, enviando] = useActionState<EstadoForm, FormData>(criarPedido, {});
@@ -92,7 +93,7 @@ export function FormularioPedido({ produtoInicial }: { produtoInicial: string })
 
         <div className="space-y-2">
           <button type="button" disabled={pesquisando} onClick={(e) => pesquisar(e.currentTarget.form!)} className="botao-secundario w-full">
-            {pesquisando ? "Pesquisando preços na internet..." : "Pesquisar preço de mercado com IA"}
+            {pesquisando ? <Girando texto="Pesquisando preços na internet..." /> : "Pesquisar preço de mercado com IA"}
           </button>
           {erroPesquisa && <p className="erro">{erroPesquisa}</p>}
           {referencia && <ReferenciaPreco referencia={referencia} />}

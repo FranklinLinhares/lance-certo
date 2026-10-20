@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Categoria, Unidade } from "@/lib/dominio";
+import { Girando } from "./Girando";
 
 export type ItemIA = {
   produto: string;
@@ -41,7 +42,7 @@ export function AssistenteIA({ exemplo, aoPreencher }: { exemplo: string; aoPree
       <textarea id="texto-ia" value={texto} onChange={(e) => setTexto(e.target.value)} rows={2} placeholder={exemplo} className="campo" />
       <div className="flex items-center gap-3">
         <button type="button" onClick={preencher} disabled={carregando || texto.trim().length < 3} className="botao-secundario py-1.5">
-          {carregando ? "Lendo..." : "Preencher com IA"}
+          {carregando ? <Girando texto="Lendo..." /> : "Preencher com IA"}
         </button>
         {erro && <span className="text-sm text-red-700">{erro}</span>}
       </div>
