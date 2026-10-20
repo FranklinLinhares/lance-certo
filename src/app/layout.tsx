@@ -61,6 +61,7 @@ async function Menu() {
           {empresa.papel === "fornecedor" && (
             <Link href="/ofertas" className="hover:text-green-800">Minhas ofertas</Link>
           )}
+          <Link href="/negocios" className="hover:text-green-800">Negócios</Link>
         </>
       )}
       <div className="ml-auto flex items-center gap-3 text-sm">

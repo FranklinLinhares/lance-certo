@@ -15,7 +15,7 @@ await db.exec(`
   create publication supabase_realtime;
   grant usage on schema public, auth to authenticated;
 `);
-for (const arquivo of ["0001_inicial.sql", "0002_cadastro_unico.sql", "0003_ofertas_vende_para.sql"]) {
+for (const arquivo of ["0001_inicial.sql", "0002_cadastro_unico.sql", "0003_ofertas_vende_para.sql", "0004_avaliacoes.sql"]) {
   await db.exec(readFileSync(new URL(`../migrations/${arquivo}`, import.meta.url), "utf8"));
 }
 await db.exec(`grant select, insert, update, delete on all tables in schema public to authenticated;`);
@@ -161,5 +161,27 @@ assert.equal((await como(ids.atacado, `select * from compras where produto_chave
 
 const media = await como(ids.restaurante, `select * from preco_medio_regional('arroz-branco-tipo-1')`);
 assert.equal(Number(media.rows[0].preco_medio), 5.4);
+
+// Avaliações: o comprador avalia o vendedor e o vendedor avalia o comprador.
+const compraVitrine = (await db.query(`select id from compras where oferta_id = $1`, [ofertaAgricultor])).rows[0].id;
+await como(ids.restaurante, `select avaliar($1, 5, 'Tomate ótimo, entrega no prazo')`, [compraVitrine]);
+await como(ids.agricultor, `select avaliar($1, 4, 'Pagou certinho')`, [compraVitrine]);
+await falha(ids.atacado, `select avaliar($1, 1)`, [compraVitrine], /não encontrado/);
+await falha(ids.restaurante, `select avaliar($1, 6)`, [compraVitrine], /de 1 a 5/);
+const externa = (await db.query(`select id from compras where origem = 'externa' limit 1`)).rows[0].id;
+await falha(ids.restaurante, `select avaliar($1, 5)`, [externa], /fora do app/);
+// Avaliar de novo substitui a nota anterior.
+await como(ids.restaurante, `select avaliar($1, 3)`, [compraVitrine]);
+const rep = (await como(ids.restaurante, `select * from reputacao($1)`, [[ids.agricultor, ids.restaurante]])).rows;
+const doAgricultor = rep.find((r) => r.empresa_id === ids.agricultor);
+const doRestaurante = rep.find((r) => r.empresa_id === ids.restaurante);
+assert.equal(Number(doAgricultor.nota_vendedor), 3);
+assert.equal(Number(doAgricultor.avaliacoes_vendedor), 1);
+assert.equal(Number(doAgricultor.vendas), 1);
+assert.equal(Number(doRestaurante.nota_comprador), 4);
+assert.equal(Number(doRestaurante.compras), 2, "uma compra no leilão e uma na vitrine; a externa não conta");
+// Ninguém grava avaliação direto na tabela.
+await falha(ids.restaurante, `insert into avaliacoes (compra_id, avaliador_id, avaliado_id, avaliado_como, nota) values ($1, $2, $3, 'vendedor', 5)`,
+  [compraVitrine, ids.restaurante, ids.atacado], /row-level security/);
 
 console.log("Todos os testes do banco passaram.");

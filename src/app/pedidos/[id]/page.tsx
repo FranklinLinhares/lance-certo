@@ -1,9 +1,13 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { exigirEmpresa } from "@/lib/sessao";
 import { CATEGORIAS, dataHora, porUnidade, reais, type Categoria, type ReferenciaPreco as Referencia, type Unidade } from "@/lib/dominio";
 import { ReferenciaPreco } from "@/components/ReferenciaPreco";
 import { SeloPreco } from "@/components/SeloPreco";
 import { mediaParaPedido } from "@/lib/escudo";
+import { Estrelas } from "@/components/Estrelas";
+import { buscarReputacao } from "@/lib/reputacao";
+import { Avaliar } from "@/components/Avaliar";
 import { cancelarPedido, escolherVencedor } from "../acoes";
 import { AoVivo } from "./AoVivo";
 import { DarLance } from "./DarLance";
@@ -63,12 +67,31 @@ export default async function DetalhePedido({ params }: PageProps<"/pedidos/[id]
     .filter((o) => o.produto_chave === pedido.produto_chave && o.unidade === pedido.unidade)
     .map((o) => Number(o.preco_unitario));
   const mercado = mediaParaPedido(precosOfertas, pedido.referencia_preco, pedido.unidade);
+  const reputacao = await buscarReputacao(supabase, [pedido.comprador_id, ...lances.map((l) => l.fornecedor_id)]);
+  const repComprador = reputacao.get(pedido.comprador_id);
+
 
   const souComprador = pedido.comprador_id === empresa.id;
   const u = pedido.unidade;
   const aberto = pedido.status === "aberto" && new Date(pedido.encerra_em) > new Date();
   const vencedor = lances.find((l) => l.id === pedido.lance_vencedor_id);
   const souVencedor = vencedor?.fornecedor_id === empresa.id;
+  // Negócio fechado: comprador e vencedor avaliam um ao outro ali mesmo.
+  let compraFechada: string | null = null;
+  let jaAvaliei = false;
+  if (pedido.status === "fechado" && (souComprador || souVencedor)) {
+    const { data: compra } = await supabase.from("compras").select("id").eq("pedido_id", id).maybeSingle();
+    compraFechada = (compra?.id as string | undefined) ?? null;
+    if (compraFechada) {
+      const { count } = await supabase
+        .from("avaliacoes")
+        .select("id", { count: "exact", head: true })
+        .eq("compra_id", compraFechada)
+        .eq("avaliador_id", empresa.id);
+      jaAvaliei = (count ?? 0) > 0;
+    }
+  }
+
   const meuMenor = lances.filter((l) => l.fornecedor_id === empresa.id).at(0);
   const menor = lances.at(0);
 
@@ -90,7 +113,9 @@ export default async function DetalhePedido({ params }: PageProps<"/pedidos/[id]
           </span>
         </div>
         <p className="text-stone-600">
-          {pedido.quantidade} {u} · {CATEGORIAS[pedido.categoria]} · {pedido.comprador.nome}, {pedido.comprador.cidade}
+          {pedido.quantidade} {u} · {CATEGORIAS[pedido.categoria]} ·{" "}
+          <Link href={`/perfil/${pedido.comprador_id}`} className="hover:underline">{pedido.comprador.nome}</Link>, {pedido.comprador.cidade}{" "}
+          <Estrelas nota={repComprador?.nota_comprador} total={repComprador?.avaliacoes_comprador} />
         </p>
         {pedido.especificacoes && <p>{pedido.especificacoes}</p>}
         <p className="text-sm text-stone-500">
@@ -115,6 +140,12 @@ export default async function DetalhePedido({ params }: PageProps<"/pedidos/[id]
           ) : (
             <p>Você venceu! Comprador: {pedido.comprador.nome} · <a className="underline" href={`https://wa.me/55${pedido.comprador.telefone}`}>WhatsApp</a></p>
           )}
+          {compraFechada && !jaAvaliei && (
+            <div className="mt-3 space-y-1 border-t border-green-200 pt-3">
+              <p className="text-sm font-medium">Avalie {souComprador ? vencedor.fornecedor?.nome : pedido.comprador.nome}</p>
+              <Avaliar compra={compraFechada} nome={(souComprador ? vencedor.fornecedor?.nome : pedido.comprador.nome) ?? ""} />
+            </div>
+          )}
         </div>
       )}
 
@@ -134,7 +165,12 @@ export default async function DetalhePedido({ params }: PageProps<"/pedidos/[id]
                   <span className="font-semibold">{i + 1}º · {porUnidade(l.preco_unitario, u)}</span>
                   {(souComprador || meu) && <span className="ml-2"><SeloPreco preco={l.preco_unitario} mercado={mercado} unidade={u} /></span>}
                   <span className="ml-2 text-sm text-stone-500">
-                    {souComprador ? `${l.fornecedor?.nome} (${l.fornecedor?.cidade})` : meu ? "Seu lance" : "Concorrente"}
+                    {souComprador ? (
+                      <>
+                        <Link href={`/perfil/${l.fornecedor_id}`} className="hover:underline">{l.fornecedor?.nome}</Link> ({l.fornecedor?.cidade}){" "}
+                        <Estrelas nota={reputacao.get(l.fornecedor_id)?.nota_vendedor} total={reputacao.get(l.fornecedor_id)?.avaliacoes_vendedor} />
+                      </>
+                    ) : meu ? "Seu lance" : "Concorrente"}
                     {l.fornecedor?.agricultor && souComprador && " · agricultor"}
                     {" · "}{dataHora(l.criado_em)}
                   </span>
