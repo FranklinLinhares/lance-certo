@@ -21,7 +21,6 @@ function Escolha<T extends string>({ nome, opcoes, valor, aoMudar }: { nome: str
 // Cadastro único: a mesma conta compra e vende, com CPF ou CNPJ.
 export function FormularioEmpresa({ empresa, email }: { empresa: Empresa | null; email: string }) {
   const [estado, acao, enviando] = useActionState<EstadoCadastro, FormData>(salvarEmpresa, {});
-  const [papel, setPapel] = useState(empresa?.papel ?? "comprador");
   const [pessoa, setPessoa] = useState<"pf" | "pj">(empresa && empresa.tipo_documento !== "cnpj" ? "pf" : "pj");
   const [agricultor, setAgricultor] = useState(empresa?.agricultor ?? false);
   const [local, setLocal] = useState<{ lat: number; lng: number } | null>(
@@ -131,11 +130,7 @@ export function FormularioEmpresa({ empresa, email }: { empresa: Empresa | null;
         </div>
       </fieldset>
 
-      <fieldset>
-        <legend className="rotulo">Começar</legend>
-        <Escolha nome="papel" opcoes={[["comprador", "Comprando"], ["fornecedor", "Vendendo"]]} valor={papel} aoMudar={setPapel} />
-        <p className="mt-1 text-sm text-stone-500">Você troca entre comprar e vender quando quiser, no menu.</p>
-      </fieldset>
+      <p className="text-sm text-stone-500">Com a mesma conta você compra e vende. Troque entre Comprar e Vender no menu, quando quiser.</p>
 
       {estado.erro && <p className="erro">{estado.erro}</p>}
       <button disabled={enviando} className="botao w-full">{enviando ? "Salvando..." : "Salvar"}</button>
