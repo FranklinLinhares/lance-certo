@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { EXIGIR_DOCUMENTO, cnpjValido, cpfValido, documentoDeTeste, soDigitos } from "@/lib/documentos";
@@ -75,6 +76,9 @@ export async function salvarEmpresa(_: EstadoCadastro, form: FormData): Promise<
     if (error.code === "23505") return { erro: "Este documento já está cadastrado em outra conta." };
     return { erro: error.message };
   }
+  // O menu fica no layout e foi montado antes do cadastro; sem isso ele continua
+  // vazio e a página seguinte abre pela metade.
+  revalidatePath("/", "layout");
   redirect(papel === "fornecedor" ? "/pedidos" : "/vitrine");
 }
 
