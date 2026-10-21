@@ -14,7 +14,9 @@ export async function salvarEmpresa(_: EstadoCadastro, form: FormData): Promise<
   } = await supabase.auth.getUser();
   if (!user) redirect("/entrar");
 
-  const papel = form.get("papel") === "fornecedor" ? "fornecedor" : "comprador";
+  // Comprar ou vender é escolhido no menu; conta nova começa comprando.
+  const { data: atual } = await supabase.from("empresas").select("papel").eq("id", user.id).maybeSingle();
+  const papel = atual?.papel === "fornecedor" ? "fornecedor" : "comprador";
   const pessoaFisica = form.get("pessoa") === "pf";
   const agricultor = form.get("agricultor") === "on";
   const nomeCompleto = String(form.get("nome_completo") ?? "").trim();
