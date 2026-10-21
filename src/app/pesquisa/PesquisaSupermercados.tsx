@@ -1,40 +1,69 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { UNIDADES, porUnidade, type Unidade } from "@/lib/dominio";
 import type { PesquisaSupermercados as Resultado } from "@/lib/ia";
 import { Girando } from "@/components/Girando";
 
 const FONTES = { site: "Site", encarte: "Encarte", aplicativo: "Aplicativo", outro: "Outro" } as const;
 
-export function PesquisaSupermercados({ raioInicial, produtoInicial }: { raioInicial: number; produtoInicial: string }) {
-  const [resultado, setResultado] = useState<Resultado & { unidade: Unidade }>();
-  const [pesquisando, setPesquisando] = useState(false);
-  const [erro, setErro] = useState<string>();
+type Estado = { resultado?: Resultado & { unidade: Unidade }; erro?: string };
 
-  async function pesquisar(dados: FormData) {
-    setPesquisando(true);
-    setErro(undefined);
-    setResultado(undefined);
+// Fica fora do componente para a pesquisa continuar quando a pessoa muda de página
+// e o resultado estar pronto quando ela voltar.
+let emAndamento: { controle: AbortController; promessa: Promise<Estado> } | undefined;
+let ultimo: Estado = {};
+
+export function PesquisaSupermercados({ raioInicial, produtoInicial }: { raioInicial: number; produtoInicial: string }) {
+  const [{ resultado, erro }, setEstado] = useState<Estado>(ultimo);
+  const [pesquisando, setPesquisando] = useState(emAndamento !== undefined);
+
+  useEffect(() => {
+    let montado = true;
+    emAndamento?.promessa.then((e) => {
+      if (montado) {
+        setEstado(e);
+        setPesquisando(false);
+      }
+    });
+    return () => {
+      montado = false;
+    };
+  }, [pesquisando]);
+
+  // onSubmit em vez de <form action>: uma action do React segura a troca de página até terminar.
+  function pesquisar(evento: React.FormEvent<HTMLFormElement>) {
+    evento.preventDefault();
+    const dados = new FormData(evento.currentTarget);
     const unidade = String(dados.get("unidade")) as Unidade;
-    try {
-      const resposta = await fetch("/api/ia/supermercados", {
-        method: "POST",
-        body: JSON.stringify({ produto: dados.get("produto"), unidade, raio_km: Number(dados.get("raio_km")) }),
-      });
-      const json = await resposta.json();
-      if (!resposta.ok) throw new Error(json.erro);
-      setResultado({ ...json, unidade });
-    } catch (e) {
-      setErro((e as Error).message);
-    } finally {
-      setPesquisando(false);
-    }
+    const controle = new AbortController();
+    const promessa = (async (): Promise<Estado> => {
+      try {
+        const resposta = await fetch("/api/ia/supermercados", {
+          method: "POST",
+          signal: controle.signal,
+          body: JSON.stringify({ produto: dados.get("produto"), unidade, raio_km: Number(dados.get("raio_km")) }),
+        });
+        const json = await resposta.json();
+        if (!resposta.ok) throw new Error(json.erro);
+        return { resultado: { ...json, unidade } };
+      } catch (e) {
+        return (e as Error).name === "AbortError" ? {} : { erro: (e as Error).message };
+      }
+    })().then((e) => {
+      ultimo = e;
+      emAndamento = undefined;
+      return e;
+    });
+    emAndamento = { controle, promessa };
+    ultimo = {};
+    setEstado({});
+    setPesquisando(true);
   }
 
   return (
     <div className="space-y-4">
-      <form action={pesquisar} className="cartao space-y-3">
+      <form onSubmit={pesquisar} className="cartao space-y-3">
         <div>
           <label className="rotulo" htmlFor="produto">Produto</label>
           <input id="produto" name="produto" required defaultValue={produtoInicial} placeholder="Ex.: arroz branco tipo 1, queijo de manteiga" className="campo" />
@@ -52,6 +81,14 @@ export function PesquisaSupermercados({ raioInicial, produtoInicial }: { raioIni
           </div>
         </div>
         <button disabled={pesquisando} className="botao w-full">{pesquisando ? <Girando texto="Pesquisando... (pode levar até 1 minuto)" /> : "Pesquisar com IA"}</button>
+        {pesquisando && (
+          <>
+            <button type="button" onClick={() => emAndamento?.controle.abort()} className="botao-secundario w-full">
+              Parar pesquisa
+            </button>
+            <p className="text-xs text-stone-500">Pode usar outras páginas enquanto espera. Quando voltar aqui, o resultado estará pronto.</p>
+          </>
+        )}
         {erro && <p className="erro">{erro}</p>}
       </form>
 
