@@ -12,6 +12,7 @@ import { cancelarPedido, escolherVencedor } from "../acoes";
 import { trocarModo } from "@/app/cadastro/modo";
 import { AoVivo } from "./AoVivo";
 import { DarLance } from "./DarLance";
+import { LinkWhatsApp } from "@/components/LinkWhatsApp";
 
 type Pedido = {
   id: string;
@@ -137,9 +138,9 @@ export default async function DetalhePedido({ params }: PageProps<"/pedidos/[id]
         <div className="cartao border-green-700 bg-green-50">
           <h2 className="font-semibold">Negócio fechado: {porUnidade(vencedor.preco_unitario, u)}</h2>
           {souComprador ? (
-            <p>Fornecedor: {vencedor.fornecedor?.nome} ({vencedor.fornecedor?.cidade}) · <a className="underline" href={`https://wa.me/55${vencedor.fornecedor?.telefone}`}>WhatsApp</a></p>
+            <p>Fornecedor: {vencedor.fornecedor?.nome} ({vencedor.fornecedor?.cidade}) · <LinkWhatsApp telefone={vencedor.fornecedor?.telefone} /></p>
           ) : (
-            <p>Você venceu! Comprador: {pedido.comprador.nome} · <a className="underline" href={`https://wa.me/55${pedido.comprador.telefone}`}>WhatsApp</a></p>
+            <p>Você venceu! Comprador: {pedido.comprador.nome} · <LinkWhatsApp telefone={pedido.comprador.telefone} /></p>
           )}
           {compraFechada && !jaAvaliei && (
             <div className="mt-3 space-y-1 border-t border-green-200 pt-3">

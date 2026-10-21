@@ -2,6 +2,7 @@ import Link from "next/link";
 import { exigirEmpresa } from "@/lib/sessao";
 import { dataHora, porUnidade, type Unidade } from "@/lib/dominio";
 import { Avaliar } from "@/components/Avaliar";
+import { LinkWhatsApp } from "@/components/LinkWhatsApp";
 
 type Negocio = {
   id: string;
@@ -58,7 +59,7 @@ export default async function Negocios() {
                 {outro && (
                   <div className="text-right text-sm">
                     <Link href={`/perfil/${outro.id}`} className="font-medium text-green-800 underline">{outro.nome}</Link>
-                    <div><a href={`https://wa.me/55${outro.telefone}`} target="_blank" rel="noreferrer" className="text-stone-500 underline">WhatsApp</a></div>
+                    <div><LinkWhatsApp telefone={outro.telefone} className="text-stone-500 underline" /></div>
                   </div>
                 )}
               </div>

@@ -3,6 +3,7 @@ import { exigirEmpresa } from "@/lib/sessao";
 import { CATEGORIAS, PUBLICO, dataHora, porUnidade, type Categoria, type Publico, type Unidade } from "@/lib/dominio";
 import { encerrarOferta } from "./acoes";
 import { ExcluirOferta } from "./ExcluirOferta";
+import { LinkWhatsApp } from "@/components/LinkWhatsApp";
 
 type Oferta = {
   id: string;
@@ -75,7 +76,7 @@ export default async function MinhasOfertas() {
                 <div className="font-medium">Compras pela vitrine:</div>
                 <ul className="list-disc pl-5">
                   {o.compras.map((c, n) => (
-                    <li key={n}>{c.comprador?.nome} · {c.quantidade} {o.unidade} · WhatsApp {c.comprador?.telefone}</li>
+                    <li key={n}>{c.comprador?.nome} · {c.quantidade} {o.unidade} · <LinkWhatsApp telefone={c.comprador?.telefone}>WhatsApp {c.comprador?.telefone}</LinkWhatsApp></li>
                   ))}
                 </ul>
               </div>
