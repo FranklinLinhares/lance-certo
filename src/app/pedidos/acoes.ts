@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { exigirEmpresa } from "@/lib/sessao";
 import { CATEGORIAS, UNIDADES, chaveDoProduto } from "@/lib/dominio";
+import { lerConvidados } from "@/lib/contatos";
 
 export type EstadoForm = { erro?: string; ok?: string };
 
@@ -24,6 +25,9 @@ export async function criarPedido(_: EstadoForm, form: FormData): Promise<Estado
   if (!produto || !quantidade) return { erro: "Informe o produto e a quantidade." };
   if (!(categoria in CATEGORIAS) || !(unidade in UNIDADES)) return { erro: "Escolha a categoria e a unidade." };
 
+  const { convidados, erro } = await lerConvidados(supabase, empresa.id, "fornecedor", form);
+  if (erro) return { erro };
+
   const referencia = String(form.get("referencia_preco") || "");
   const { data, error } = await supabase
     .from("pedidos")
@@ -41,6 +45,7 @@ export async function criarPedido(_: EstadoForm, form: FormData): Promise<Estado
       lances_visiveis: form.get("lances_visiveis") === "sim",
       encerra_em: new Date(Date.now() + horas * 3_600_000).toISOString(),
       referencia_preco: referencia ? JSON.parse(referencia) : null,
+      convidados,
     })
     .select("id")
     .single();

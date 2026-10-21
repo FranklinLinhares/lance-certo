@@ -3,8 +3,18 @@
 import { useActionState } from "react";
 import { editarOferta, type EstadoOferta } from "../../acoes";
 import { CamposOferta, type ValoresOferta } from "../../CamposOferta";
+import { EscolherConvidados } from "@/components/EscolherConvidados";
+import type { Contato } from "@/lib/contatos";
 
-export function FormularioEdicao({ oferta, vencida }: { oferta: ValoresOferta & { id: string; produto_chave: string; quantidade_disponivel: number }; vencida: boolean }) {
+export function FormularioEdicao({
+  oferta,
+  vencida,
+  clientes,
+}: {
+  oferta: ValoresOferta & { id: string; produto_chave: string; quantidade_disponivel: number; convidados: string[] | null };
+  vencida: boolean;
+  clientes: Contato[];
+}) {
   const [estado, acao, enviando] = useActionState<EstadoOferta, FormData>(editarOferta, {});
   return (
     <form action={acao} className="cartao space-y-4">
@@ -22,6 +32,7 @@ export function FormularioEdicao({ oferta, vencida }: { oferta: ValoresOferta & 
           <option value="30">30 dias a partir de hoje</option>
         </select>
       </div>
+      <EscolherConvidados tipo="cliente" contatos={clientes} marcados={oferta.convidados} />
       {estado.erro && <p className="erro">{estado.erro}</p>}
       <button disabled={enviando} className="botao w-full">{enviando ? "Salvando..." : "Salvar alterações"}</button>
     </form>

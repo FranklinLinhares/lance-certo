@@ -15,6 +15,7 @@ type Oferta = {
   valida_ate: string;
   ativa: boolean;
   vende_para: Publico;
+  convidados: string[] | null;
   compras: { quantidade: number; data: string; comprador: { nome: string; telefone: string } | null }[];
 };
 
@@ -59,7 +60,7 @@ export default async function MinhasOfertas() {
                 <div className="font-semibold">{o.produto}</div>
                 <div className="text-sm text-stone-500">
                   {CATEGORIAS[o.categoria]} · {o.quantidade_disponivel} {o.unidade} · válida até {dataHora(o.valida_ate)}
-                  {o.vende_para !== "todos" && <> · {PUBLICO[o.vende_para]}</>}
+                  {o.convidados ? <> · Só para {o.convidados.length} cliente{o.convidados.length > 1 ? "s" : ""} escolhido{o.convidados.length > 1 ? "s" : ""}</> : o.vende_para !== "todos" && <> · {PUBLICO[o.vende_para]}</>}
                 </div>
               </div>
               <div className="text-lg font-bold text-green-800">{porUnidade(o.preco_unitario, o.unidade)}</div>

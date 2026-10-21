@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { exigirEmpresa } from "@/lib/sessao";
 import { CATEGORIAS, PUBLICO, UNIDADES, chaveDoProduto } from "@/lib/dominio";
+import { lerConvidados } from "@/lib/contatos";
 
 export type EstadoOferta = { erro?: string };
 
@@ -42,9 +43,12 @@ export async function publicarOferta(_: EstadoOferta, form: FormData): Promise<E
   const { campos, erro } = lerCampos(form);
   if (!campos) return { erro };
   const diasValidaOferta = Number(form.get("dias_oferta")) || 7;
+  const convidados = await lerConvidados(supabase, empresa.id, "cliente", form);
+  if (convidados.erro) return { erro: convidados.erro };
 
   const { error } = await supabase.from("ofertas").insert({
     ...campos,
+    convidados: convidados.convidados,
     fornecedor_id: empresa.id,
     produto_chave: String(form.get("produto_chave") || "") || chaveDoProduto(campos.produto),
     valida_ate: new Date(Date.now() + diasValidaOferta * 86_400_000).toISOString(),
@@ -62,10 +66,13 @@ export async function editarOferta(_: EstadoOferta, form: FormData): Promise<Est
 
   // Prorrogar: conta os dias a partir de agora. "0" mantém o prazo atual.
   const prorrogar = Number(form.get("dias_oferta")) || 0;
+  const convidados = await lerConvidados(supabase, empresa.id, "cliente", form);
+  if (convidados.erro) return { erro: convidados.erro };
   const { data, error } = await supabase
     .from("ofertas")
     .update({
       ...campos,
+      convidados: convidados.convidados,
       // A chave agrupa ofertas iguais na vitrine; só muda se o nome do produto mudou.
       produto_chave:
         campos.produto === form.get("produto_original") ? String(form.get("produto_chave")) : chaveDoProduto(campos.produto),
