@@ -5,7 +5,6 @@ import { SeloPreco } from "@/components/SeloPreco";
 import { mediaDasOfertas } from "@/lib/escudo";
 import { Estrelas } from "@/components/Estrelas";
 import { buscarReputacao } from "@/lib/reputacao";
-import { Comprar } from "./Comprar";
 
 type Oferta = {
   id: string;
@@ -39,12 +38,7 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
   const ofertas = ((data ?? []) as Oferta[]).filter(
     (o) => o.fornecedor_id !== empresa.id && (origem === "todos" || o.fornecedor_pj === (origem === "pj")),
   );
-  const { data: telefones } = await supabase
-    .from("empresas")
-    .select("id, telefone")
-    .in("id", [...new Set(ofertas.map((o) => o.fornecedor_id))]);
   const reputacao = await buscarReputacao(supabase, ofertas.map((o) => o.fornecedor_id));
-  const telefoneDe = Object.fromEntries((telefones ?? []).map((t) => [t.id, t.telefone as string]));
 
   // Agrupa as ofertas do mesmo produto e unidade para comparar preços.
   const grupos = new Map<string, Oferta[]>();
@@ -133,7 +127,15 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
                     </div>
                   </div>
                   {empresa.papel === "comprador" && (
-                    <Comprar oferta={o.id} maximo={Number(o.quantidade_disponivel)} unidade={u} telefone={telefoneDe[o.fornecedor_id] ?? ""} fornecedor={o.fornecedor_nome} />
+                    // Comprar leva à confirmação, que mostra quem vende antes de fechar.
+                    <form action={`/vitrine/${o.id}`} className="flex flex-wrap items-center gap-2 text-sm">
+                      <label className="flex items-center gap-1">
+                        Quantidade
+                        <input name="quantidade" inputMode="decimal" required defaultValue={Math.min(1, Number(o.quantidade_disponivel))} className="campo w-24 py-1" />
+                        {u}
+                      </label>
+                      <button className="botao py-1">Comprar</button>
+                    </form>
                   )}
                 </li>
               ))}

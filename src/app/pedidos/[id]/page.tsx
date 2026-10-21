@@ -8,7 +8,7 @@ import { mediaParaPedido } from "@/lib/escudo";
 import { Estrelas } from "@/components/Estrelas";
 import { buscarReputacao } from "@/lib/reputacao";
 import { Avaliar } from "@/components/Avaliar";
-import { cancelarPedido, escolherVencedor } from "../acoes";
+import { cancelarPedido } from "../acoes";
 import { trocarModo } from "@/app/cadastro/modo";
 import { AoVivo } from "./AoVivo";
 import { DarLance } from "./DarLance";
@@ -193,11 +193,8 @@ export default async function DetalhePedido({ params }: PageProps<"/pedidos/[id]
                   {l.observacao && (souComprador || meu) && <div className="text-sm">{l.observacao}</div>}
                 </div>
                 {souComprador && (pedido.status === "aberto" || pedido.status === "encerrado") && (
-                  <form action={escolherVencedor}>
-                    <input type="hidden" name="pedido" value={id} />
-                    <input type="hidden" name="lance" value={l.id} />
-                    <button className={i === 0 ? "botao py-1" : "botao-secundario py-1"}>Escolher</button>
-                  </form>
+                  // Escolher leva à confirmação, que mostra quem é o fornecedor antes de fechar.
+                  <Link href={`/pedidos/${id}/fechar?lance=${l.id}`} className={i === 0 ? "botao py-1" : "botao-secundario py-1"}>Escolher</Link>
                 )}
               </li>
             );

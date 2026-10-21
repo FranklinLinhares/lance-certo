@@ -75,6 +75,7 @@ export async function escolherVencedor(form: FormData) {
   const { error } = await supabase.rpc("fechar_pedido", { p_pedido: pedido, p_lance: String(form.get("lance")) });
   if (error) throw new Error(error.message);
   revalidatePath(`/pedidos/${pedido}`);
+  redirect(`/pedidos/${pedido}`);
 }
 
 export async function cancelarPedido(form: FormData) {

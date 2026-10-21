@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { comprarOferta, type EstadoCompra } from "./acoes";
 import { Avaliar } from "@/components/Avaliar";
 
-export function Comprar({ oferta, maximo, unidade, telefone, fornecedor }: { oferta: string; maximo: number; unidade: string; telefone: string; fornecedor: string }) {
+export function Comprar({ oferta, maximo, unidade, telefone, fornecedor, quantidade }: { oferta: string; maximo: number; unidade: string; telefone: string; fornecedor: string; quantidade?: number }) {
   const [estado, acao, enviando] = useActionState<EstadoCompra, FormData>(comprarOferta, {});
   if (estado.ok) {
     return (
@@ -28,10 +28,10 @@ export function Comprar({ oferta, maximo, unidade, telefone, fornecedor }: { ofe
       <input type="hidden" name="oferta" value={oferta} />
       <label className="flex items-center gap-1">
         Quantidade
-        <input name="quantidade" type="number" step="any" min={0} max={maximo} required defaultValue={Math.min(1, maximo)} className="campo w-24 py-1" />
+        <input name="quantidade" type="number" step="any" min={0} max={maximo} required defaultValue={quantidade ?? Math.min(1, maximo)} className="campo w-24 py-1" />
         {unidade}
       </label>
-      <button disabled={enviando} className="botao py-1">{enviando ? "Comprando..." : "Comprar"}</button>
+      <button disabled={enviando} className="botao py-1">{enviando ? "Confirmando..." : "Confirmar compra"}</button>
       {estado.erro && <span className="text-red-700">{estado.erro}</span>}
     </form>
   );
