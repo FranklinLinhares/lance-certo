@@ -9,7 +9,7 @@ export default async function Cadastro() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/entrar");
-  const { data: empresa } = await supabase.from("empresas").select("*").eq("id", user.id).maybeSingle<Empresa>();
+  const { data: empresa } = await supabase.rpc("minha_empresa").maybeSingle<Empresa>();
 
   return (
     <div className="mx-auto max-w-xl space-y-4">

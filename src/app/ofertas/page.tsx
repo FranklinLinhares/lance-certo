@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { exigirEmpresa } from "@/lib/sessao";
+import { buscarTelefones } from "@/lib/telefones";
 import { CATEGORIAS, PUBLICO, dataHora, porUnidade, type Categoria, type Publico, type Unidade } from "@/lib/dominio";
 import { encerrarOferta } from "./acoes";
 import { ExcluirOferta } from "./ExcluirOferta";
@@ -16,7 +17,7 @@ type Oferta = {
   ativa: boolean;
   vende_para: Publico;
   convidados: string[] | null;
-  compras: { quantidade: number; data: string; comprador: { nome: string; telefone: string } | null }[];
+  compras: { quantidade: number; data: string; comprador_id: string; comprador: { nome: string } | null }[];
 };
 
 export default async function MinhasOfertas() {
@@ -24,11 +25,12 @@ export default async function MinhasOfertas() {
 
   const { data } = await supabase
     .from("ofertas")
-    .select("*, compras(quantidade, data, comprador:empresas!compras_comprador_id_fkey(nome, telefone))")
+    .select("*, compras(quantidade, data, comprador_id, comprador:empresas!compras_comprador_id_fkey(nome))")
     .eq("fornecedor_id", empresa.id)
     .order("criado_em", { ascending: false })
     .returns<Oferta[]>();
   const ofertas = data ?? [];
+  const telefones = await buscarTelefones(supabase, ofertas.flatMap((o) => o.compras.map((c) => c.comprador_id)));
 
   // Para cada produto, quantos compradores próximos têm pedido aberto.
   const chaves = [...new Set(ofertas.filter((o) => o.ativa).map((o) => o.produto_chave))];
@@ -76,7 +78,7 @@ export default async function MinhasOfertas() {
                 <div className="font-medium">Compras pela vitrine:</div>
                 <ul className="list-disc pl-5">
                   {o.compras.map((c, n) => (
-                    <li key={n}>{c.comprador?.nome} · {c.quantidade} {o.unidade} · WhatsApp {c.comprador?.telefone}</li>
+                    <li key={n}>{c.comprador?.nome} · {c.quantidade} {o.unidade} · WhatsApp {telefones.get(c.comprador_id) ?? "–"}</li>
                   ))}
                 </ul>
               </div>

@@ -2,12 +2,13 @@
 // auth do Supabase e verifica as regras de negócio principais.
 // Uso: node supabase/tests/testar-sql.mjs
 import { PGlite } from "@electric-sql/pglite";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import assert from "node:assert/strict";
 
 const db = new PGlite();
 await db.exec(`
   create role authenticated;
+  create role anon;
   create schema auth;
   create table auth.users (id uuid primary key);
   create function auth.uid() returns uuid language sql stable
@@ -15,10 +16,13 @@ await db.exec(`
   create publication supabase_realtime;
   grant usage on schema public, auth to authenticated;
 `);
-for (const arquivo of ["0001_inicial.sql", "0002_cadastro_unico.sql", "0003_ofertas_vende_para.sql", "0004_avaliacoes.sql", "0005_excluir_ofertas.sql", "0006_contatos.sql", "0007_apagar_usuario.sql"]) {
-  await db.exec(readFileSync(new URL(`../migrations/${arquivo}`, import.meta.url), "utf8"));
+// Como no Supabase: tabelas novas já nascem com acesso para usuários logados,
+// e cada migração pode tirar o que não deve ficar aberto.
+await db.exec(`alter default privileges in schema public grant select, insert, update, delete on tables to authenticated;`);
+const migracoes = new URL("../migrations/", import.meta.url);
+for (const arquivo of readdirSync(migracoes).filter((a) => a.endsWith(".sql")).sort()) {
+  await db.exec(readFileSync(new URL(arquivo, migracoes), "utf8"));
 }
-await db.exec(`grant select, insert, update, delete on all tables in schema public to authenticated;`);
 
 const ids = {
   restaurante: "00000000-0000-0000-0000-000000000001", // João Pessoa
@@ -143,6 +147,9 @@ const vencedor = (await db.query(`select id from lances where pedido_id = $1 ord
 await falha(ids.atacado, `select fechar_pedido($1, $2)`, [aberto, vencedor], /não encontrado/);
 await como(ids.restaurante, `select fechar_pedido($1, $2)`, [aberto, vencedor]);
 await falha(ids.agricultor, `select dar_lance($1, 5.00)`, [aberto], /encerrado/);
+// Pedido fechado não pode mais ser cancelado.
+await como(ids.restaurante, `update pedidos set status = 'cancelado' where id = $1`, [aberto]);
+assert.equal((await db.query(`select status from pedidos where id = $1`, [aberto])).rows[0].status, "fechado");
 
 // Compra pela vitrine baixa o estoque.
 const ofertaAgricultor = (await db.query(`select id from ofertas where fornecedor_id = $1`, [ids.agricultor])).rows[0].id;
@@ -222,6 +229,38 @@ assert.ok((await como(ids.restaurante, `select id from vitrine_ofertas('arroz')`
 assert.ok(!(await como(ids.pessoa, `select id from vitrine_ofertas('arroz')`)).rows.some((r) => r.id === ofertaFechada), "quem não é cliente não vê");
 await falha(ids.pessoa, `select comprar_oferta($1, 1)`, [ofertaFechada], /clientes escolhidos/);
 await como(ids.restaurante, `select comprar_oferta($1, 1)`, [ofertaFechada]);
+
+// Levar todo o estoque esgota a oferta.
+const pouca = (await como(ids.agricultor, `insert into ofertas (fornecedor_id, produto, produto_chave, categoria, unidade, preco_unitario, quantidade_disponivel)
+  values ($1, 'Macaxeira', 'macaxeira', 'hortifruti', 'kg', 3.00, 10) returning id`, [ids.agricultor])).rows[0].id;
+await como(ids.restaurante, `select comprar_oferta($1, 10)`, [pouca]);
+const esgotada = (await db.query(`select quantidade_disponivel q, ativa from ofertas where id = $1`, [pouca])).rows[0];
+assert.equal(Number(esgotada.q), 0);
+assert.equal(esgotada.ativa, false);
+
+// Privacidade: documento, telefone e localização não aparecem para outras contas.
+await falha(ids.pessoa, `select documento from empresas where id = $1`, [ids.agricultor], /permission denied/);
+await falha(ids.pessoa, `select telefone from empresas where id = $1`, [ids.agricultor], /permission denied/);
+await falha(ids.pessoa, `select lat from empresas where id = $1`, [ids.agricultor], /permission denied/);
+assert.equal((await como(ids.pessoa, `select nome from empresas where id = $1`, [ids.agricultor])).rows[0].nome, "Sítio Boa Vista");
+assert.equal((await como(ids.pessoa, `select documento from minha_empresa()`)).rows[0].documento, "52998224725");
+// Telefone só de quem já fez negócio: o restaurante comprou do agricultor; a Maria, não.
+assert.equal((await como(ids.restaurante, `select telefone from telefones_de_negocio($1)`, [[ids.agricultor]])).rows[0]?.telefone, "83999990003");
+assert.equal((await como(ids.pessoa, `select telefone from telefones_de_negocio($1)`, [[ids.agricultor]])).rows.length, 0);
+// O cadastro continua salvando, como o app faz: update na própria conta.
+await como(ids.pessoa, `update empresas set nome = 'Maria S.', telefone = '83999990006', lat = -7.13 where id = $1`, [ids.pessoa]);
+assert.equal((await db.query(`select nome from empresas where id = $1`, [ids.pessoa])).rows[0].nome, "Maria S.");
+
+// E a conta nova se cadastra com insert.
+await db.exec(`insert into auth.users values ('00000000-0000-0000-0000-000000000010')`);
+await como("00000000-0000-0000-0000-000000000010", `insert into empresas (id, papel, tipo_documento, documento, nome, telefone, cidade, uf, lat, lng)
+  values ('00000000-0000-0000-0000-000000000010', 'comprador', 'cpf', '11144477735', 'Novo', '83999990010', 'João Pessoa', 'PB', -7.12, -34.85)`);
+
+// Limite diário da IA: 10 pesquisas por conta.
+for (let i = 0; i < 10; i++) await como(ids.pessoa, `select registrar_uso_ia('pesquisa')`);
+await falha(ids.pessoa, `select registrar_uso_ia('pesquisa')`, [], /limite de 10/);
+await como(ids.pessoa, `select registrar_uso_ia('item')`);
+await como(ids.restaurante, `select registrar_uso_ia('pesquisa')`);
 
 // Dá para apagar um fornecedor que venceu um leilão; o pedido fica sem vencedor.
 const pedidoGanho = (await db.query(`select id from pedidos where lance_vencedor_id is not null limit 1`)).rows[0].id;

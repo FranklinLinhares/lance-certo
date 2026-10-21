@@ -2,6 +2,7 @@ import Link from "next/link";
 import { exigirEmpresa } from "@/lib/sessao";
 import { dataHora, porUnidade, type Unidade } from "@/lib/dominio";
 import { Avaliar } from "@/components/Avaliar";
+import { buscarTelefones } from "@/lib/telefones";
 
 type Negocio = {
   id: string;
@@ -11,8 +12,8 @@ type Negocio = {
   preco_unitario: number;
   origem: "leilao" | "vitrine";
   criado_em: string;
-  comprador: { id: string; nome: string; telefone: string } | null;
-  fornecedor: { id: string; nome: string; telefone: string } | null;
+  comprador: { id: string; nome: string } | null;
+  fornecedor: { id: string; nome: string } | null;
 };
 
 // Compras e vendas feitas no app, com a avaliação da outra parte.
@@ -22,13 +23,14 @@ export default async function Negocios() {
   const { data } = await supabase
     .from("compras")
     .select(
-      "id, produto, unidade, quantidade, preco_unitario, origem, criado_em, comprador:empresas!compras_comprador_id_fkey(id, nome, telefone), fornecedor:empresas!compras_fornecedor_id_fkey(id, nome, telefone)",
+      "id, produto, unidade, quantidade, preco_unitario, origem, criado_em, comprador:empresas!compras_comprador_id_fkey(id, nome), fornecedor:empresas!compras_fornecedor_id_fkey(id, nome)",
     )
     .not("fornecedor_id", "is", null)
     .or(`comprador_id.eq.${empresa.id},fornecedor_id.eq.${empresa.id}`)
     .order("criado_em", { ascending: false })
     .limit(50);
   const negocios = (data ?? []) as unknown as Negocio[];
+  const telefones = await buscarTelefones(supabase, negocios.flatMap((n) => [n.comprador?.id, n.fornecedor?.id]));
 
   const { data: minhas } = await supabase.from("avaliacoes").select("compra_id, nota").eq("avaliador_id", empresa.id);
   const notaDada = new Map((minhas ?? []).map((a) => [a.compra_id as string, a.nota as number]));
@@ -58,7 +60,7 @@ export default async function Negocios() {
                 {outro && (
                   <div className="text-right text-sm">
                     <Link href={`/perfil/${outro.id}`} className="font-medium text-green-800 underline">{outro.nome}</Link>
-                    <div><a href={`https://wa.me/55${outro.telefone}`} target="_blank" rel="noreferrer" className="text-stone-500 underline">WhatsApp</a></div>
+                    <div><a href={`https://wa.me/55${telefones.get(outro.id) ?? ""}`} target="_blank" rel="noreferrer" className="text-stone-500 underline">WhatsApp</a></div>
                   </div>
                 )}
               </div>
