@@ -6,8 +6,10 @@ import { AssistenteIA, type ItemIA } from "@/components/AssistenteIA";
 import { ReferenciaPreco } from "@/components/ReferenciaPreco";
 import { CATEGORIAS, UNIDADES, type ReferenciaPreco as Referencia } from "@/lib/dominio";
 import { Girando } from "@/components/Girando";
+import { EscolherConvidados } from "@/components/EscolherConvidados";
+import type { Contato } from "@/lib/contatos";
 
-export function FormularioPedido({ produtoInicial }: { produtoInicial: string }) {
+export function FormularioPedido({ produtoInicial, fornecedores }: { produtoInicial: string; fornecedores: Contato[] }) {
   const [estado, acao, enviando] = useActionState<EstadoForm, FormData>(criarPedido, {});
   const [item, setItem] = useState<Partial<ItemIA>>({ produto: produtoInicial, categoria: "hortifruti", unidade: "kg" });
   const [versao, setVersao] = useState(0);
@@ -115,6 +117,8 @@ export function FormularioPedido({ produtoInicial }: { produtoInicial: string })
             <span><strong>Não, leilão fechado.</strong> Só você vê os preços.</span>
           </label>
         </fieldset>
+
+        <EscolherConvidados tipo="fornecedor" contatos={fornecedores} />
 
         <div>
           <label className="rotulo" htmlFor="duracao_horas">Receber lances por</label>

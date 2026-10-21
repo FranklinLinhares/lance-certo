@@ -15,7 +15,7 @@ await db.exec(`
   create publication supabase_realtime;
   grant usage on schema public, auth to authenticated;
 `);
-for (const arquivo of ["0001_inicial.sql", "0002_cadastro_unico.sql", "0003_ofertas_vende_para.sql", "0004_avaliacoes.sql", "0005_excluir_ofertas.sql"]) {
+for (const arquivo of ["0001_inicial.sql", "0002_cadastro_unico.sql", "0003_ofertas_vende_para.sql", "0004_avaliacoes.sql", "0005_excluir_ofertas.sql", "0006_contatos.sql"]) {
   await db.exec(readFileSync(new URL(`../migrations/${arquivo}`, import.meta.url), "utf8"));
 }
 await db.exec(`grant select, insert, update, delete on all tables in schema public to authenticated;`);
@@ -100,7 +100,7 @@ await db.exec(`update empresas set papel = 'comprador' where id = '${ids.atacado
 assert.ok((await como(ids.atacado, `select fornecedor_nome from vitrine_ofertas('tomate')`)).rows.some((r) => r.fornecedor_nome === "Atacado Litoral"),
   "a própria oferta aparece na vitrine (marcada como sua no app)");
 const propria = (await db.query(`select id from ofertas where fornecedor_id = $1`, [ids.atacado])).rows[0].id;
-await falha(ids.atacado, `select comprar_oferta($1, 1)`, [propria], /fora do seu raio/);
+await falha(ids.atacado, `select comprar_oferta($1, 1)`, [propria], /própria oferta/);
 await db.exec(`update empresas set papel = 'fornecedor' where id = '${ids.atacado}'`);
 
 // Pedido aberto (lances visíveis) e pedido fechado (lances ocultos).
@@ -197,5 +197,30 @@ assert.equal((await db.query(`select 1 from ofertas where id = $1`, [ofertaAgric
 const compraMantida = (await db.query(`select oferta_id from compras where id = $1`, [compraVitrine])).rows[0];
 assert.equal(compraMantida.oferta_id, null);
 assert.equal((await db.query(`select 1 from avaliacoes where compra_id = $1`, [compraVitrine])).rows.length, 2);
+
+// Contatos: cada conta vê e gerencia só os próprios.
+await como(ids.restaurante, `insert into contatos (dono_id, contato_id, tipo) values ($1, $2, 'fornecedor')`, [ids.restaurante, ids.longe]);
+assert.equal((await como(ids.atacado, `select * from contatos`)).rows.length, 0, "outra conta não vê os contatos do restaurante");
+await falha(ids.atacado, `insert into contatos (dono_id, contato_id, tipo) values ($1, $2, 'cliente')`, [ids.restaurante, ids.atacado], /row-level security/);
+const achados = (await como(ids.restaurante, `select nome from encontrar_empresas('serra')`)).rows;
+assert.deepEqual(achados.map((r) => r.nome), ["Distribuidora Serra"]);
+assert.equal((await como(ids.restaurante, `select * from encontrar_empresas('ab')`)).rows.length, 0, "busca curta não lista ninguém");
+
+// Leilão só para convidados: o convidado de longe participa; o vizinho não convidado não vê.
+await db.exec(`update empresas set papel = 'fornecedor' where id in ('${ids.longe}', '${ids.atacado}')`);
+const convite = (await como(ids.restaurante, `insert into pedidos (comprador_id, produto, produto_chave, categoria, unidade, quantidade, encerra_em, convidados)
+  values ($1, 'Feijão', 'feijao', 'graos', 'kg', 100, now() + interval '1 day', array[$2]::uuid[]) returning id`, [ids.restaurante, ids.longe])).rows[0].id;
+assert.ok((await como(ids.longe, `select id from pedidos_proximos()`)).rows.some((r) => r.id === convite), "convidado vê mesmo fora do raio");
+assert.ok(!(await como(ids.atacado, `select id from pedidos_proximos()`)).rows.some((r) => r.id === convite), "não convidado não vê");
+await como(ids.longe, `select dar_lance($1, 7.00)`, [convite]);
+await falha(ids.atacado, `select dar_lance($1, 6.00)`, [convite], /convidados/);
+
+// Oferta só para clientes escolhidos.
+const ofertaFechada = (await como(ids.atacado, `insert into ofertas (fornecedor_id, produto, produto_chave, categoria, unidade, preco_unitario, quantidade_disponivel, convidados)
+  values ($1, 'Arroz', 'arroz', 'graos', 'kg', 5, 100, array[$2]::uuid[]) returning id`, [ids.atacado, ids.restaurante])).rows[0].id;
+assert.ok((await como(ids.restaurante, `select id from vitrine_ofertas('arroz')`)).rows.some((r) => r.id === ofertaFechada));
+assert.ok(!(await como(ids.pessoa, `select id from vitrine_ofertas('arroz')`)).rows.some((r) => r.id === ofertaFechada), "quem não é cliente não vê");
+await falha(ids.pessoa, `select comprar_oferta($1, 1)`, [ofertaFechada], /clientes escolhidos/);
+await como(ids.restaurante, `select comprar_oferta($1, 1)`, [ofertaFechada]);
 
 console.log("Todos os testes do banco passaram.");

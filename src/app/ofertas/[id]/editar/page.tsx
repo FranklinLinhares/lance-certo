@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { exigirEmpresa } from "@/lib/sessao";
 import { dataHora, type Categoria, type Publico, type Unidade } from "@/lib/dominio";
+import { buscarContatos } from "@/lib/contatos";
 import { FormularioEdicao } from "./FormularioEdicao";
 import { ExcluirOferta } from "../../ExcluirOferta";
 
@@ -18,6 +19,7 @@ type Oferta = {
   descricao: string | null;
   valida_ate: string;
   ativa: boolean;
+  convidados: string[] | null;
 };
 
 export default async function EditarOferta({ params }: PageProps<"/ofertas/[id]/editar">) {
@@ -30,6 +32,7 @@ export default async function EditarOferta({ params }: PageProps<"/ofertas/[id]/
     .eq("fornecedor_id", empresa.id)
     .maybeSingle<Oferta>();
   if (!oferta) notFound();
+  const clientes = await buscarContatos(supabase, empresa.id, "cliente");
 
   const vencida = !oferta.ativa || new Date(oferta.valida_ate) < new Date();
   return (
@@ -38,7 +41,7 @@ export default async function EditarOferta({ params }: PageProps<"/ofertas/[id]/
       <p className="text-sm text-stone-600">
         {vencida ? "Esta oferta não está na vitrine. Escolha um prazo abaixo para publicá-la de novo." : `Na vitrine até ${dataHora(oferta.valida_ate)}.`}
       </p>
-      <FormularioEdicao oferta={oferta} vencida={vencida} />
+      <FormularioEdicao oferta={oferta} vencida={vencida} clientes={clientes} />
       <div className="cartao flex items-center justify-between gap-3">
         <p className="text-sm text-stone-600">Não vai mais vender este produto?</p>
         <ExcluirOferta id={oferta.id} />

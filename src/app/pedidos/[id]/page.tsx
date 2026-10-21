@@ -30,6 +30,7 @@ type Pedido = {
   status: "aberto" | "encerrado" | "fechado" | "cancelado";
   lance_vencedor_id: string | null;
   referencia_preco: Referencia | null;
+  convidados: string[] | null;
   comprador: { nome: string; cidade: string; telefone: string };
 };
 type Lance = {
@@ -73,6 +74,8 @@ export default async function DetalhePedido({ params }: PageProps<"/pedidos/[id]
 
 
   const souComprador = pedido.comprador_id === empresa.id;
+  // Leilão só para convidados: quem não está na lista vê o leilão, mas não pode dar lance.
+  const possoDarLance = !pedido.convidados || pedido.convidados.includes(empresa.id);
   const u = pedido.unidade;
   const aberto = pedido.status === "aberto" && new Date(pedido.encerra_em) > new Date();
   const vencedor = lances.find((l) => l.id === pedido.lance_vencedor_id);
@@ -123,6 +126,7 @@ export default async function DetalhePedido({ params }: PageProps<"/pedidos/[id]
           {pedido.entrega_ate && <>Entrega até {new Date(pedido.entrega_ate).toLocaleDateString("pt-BR")} · </>}
           {pedido.validade_minima_dias != null && <>Validade mínima de {pedido.validade_minima_dias} dias · </>}
           {pedido.lances_visiveis ? "Leilão aberto" : "Leilão fechado"}
+          {pedido.convidados && <> · Só para {pedido.convidados.length} fornecedor{pedido.convidados.length > 1 ? "es" : ""} convidado{pedido.convidados.length > 1 ? "s" : ""}</>}
         </p>
       </div>
 
@@ -150,7 +154,10 @@ export default async function DetalhePedido({ params }: PageProps<"/pedidos/[id]
         </div>
       )}
 
-      {!souComprador && empresa.papel === "fornecedor" && aberto && <DarLance pedido={id} unidade={u} dica={dica} mercado={mercado} />}
+      {!souComprador && empresa.papel === "fornecedor" && aberto && !possoDarLance && (
+        <p className="aviso">Este leilão é só para fornecedores convidados pelo comprador.</p>
+      )}
+      {!souComprador && empresa.papel === "fornecedor" && aberto && possoDarLance && <DarLance pedido={id} unidade={u} dica={dica} mercado={mercado} />}
       {!souComprador && empresa.papel === "comprador" && aberto && (
         <form action={trocarModo} className="aviso flex flex-wrap items-center justify-between gap-2">
           <span>Você está no modo Comprar. Para dar lance neste leilão, mude para Vender.</span>

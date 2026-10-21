@@ -60,6 +60,7 @@ async function Menu() {
           )}
           <Link href="/ofertas" className="hover:text-green-800">Minhas ofertas</Link>
           <Link href="/negocios" className="hover:text-green-800">Negócios</Link>
+          <Link href="/contatos" className="hover:text-green-800">Contatos</Link>
         </>
       )}
       <div className="ml-auto flex items-center gap-3 text-sm">
