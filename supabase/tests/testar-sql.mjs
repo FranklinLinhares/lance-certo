@@ -15,7 +15,7 @@ await db.exec(`
   create publication supabase_realtime;
   grant usage on schema public, auth to authenticated;
 `);
-for (const arquivo of ["0001_inicial.sql", "0002_cadastro_unico.sql", "0003_ofertas_vende_para.sql", "0004_avaliacoes.sql", "0005_excluir_ofertas.sql", "0006_contatos.sql"]) {
+for (const arquivo of ["0001_inicial.sql", "0002_cadastro_unico.sql", "0003_ofertas_vende_para.sql", "0004_avaliacoes.sql", "0005_excluir_ofertas.sql", "0006_contatos.sql", "0007_apagar_usuario.sql"]) {
   await db.exec(readFileSync(new URL(`../migrations/${arquivo}`, import.meta.url), "utf8"));
 }
 await db.exec(`grant select, insert, update, delete on all tables in schema public to authenticated;`);
@@ -222,5 +222,11 @@ assert.ok((await como(ids.restaurante, `select id from vitrine_ofertas('arroz')`
 assert.ok(!(await como(ids.pessoa, `select id from vitrine_ofertas('arroz')`)).rows.some((r) => r.id === ofertaFechada), "quem não é cliente não vê");
 await falha(ids.pessoa, `select comprar_oferta($1, 1)`, [ofertaFechada], /clientes escolhidos/);
 await como(ids.restaurante, `select comprar_oferta($1, 1)`, [ofertaFechada]);
+
+// Dá para apagar um fornecedor que venceu um leilão; o pedido fica sem vencedor.
+const pedidoGanho = (await db.query(`select id from pedidos where lance_vencedor_id is not null limit 1`)).rows[0].id;
+const vencedorDoPedido = (await db.query(`select l.fornecedor_id f from pedidos p join lances l on l.id = p.lance_vencedor_id where p.id = $1`, [pedidoGanho])).rows[0].f;
+await db.query(`delete from auth.users where id = $1`, [vencedorDoPedido]);
+assert.equal((await db.query(`select lance_vencedor_id from pedidos where id = $1`, [pedidoGanho])).rows[0].lance_vencedor_id, null);
 
 console.log("Todos os testes do banco passaram.");
