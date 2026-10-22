@@ -1,8 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { comprarOferta, type EstadoCompra } from "./acoes";
-import { Avaliar } from "@/components/Avaliar";
 
 export function Comprar({ oferta, maximo, unidade, telefone, fornecedor, quantidade }: { oferta: string; maximo: number; unidade: string; telefone: string; fornecedor: string; quantidade?: number }) {
   const [estado, acao, enviando] = useActionState<EstadoCompra, FormData>(comprarOferta, {});
@@ -13,13 +13,9 @@ export function Comprar({ oferta, maximo, unidade, telefone, fornecedor, quantid
           {estado.ok}{" "}
           <a href={`https://wa.me/55${telefone}`} target="_blank" rel="noreferrer" className="font-semibold underline">Abrir WhatsApp</a>
         </p>
-        {estado.compra && (
-          <>
-            <p className="text-sm font-medium">Avalie {fornecedor}</p>
-            <Avaliar compra={estado.compra} nome={fornecedor} />
-            <p className="text-xs text-stone-500">Se preferir, avalie depois em Negócios.</p>
-          </>
-        )}
+        <p className="text-xs text-stone-600">
+          Combine a entrega com {fornecedor}. Quando receber, confirme em <Link href="/negocios" className="underline">Negócios</Link> para avaliar.
+        </p>
       </div>
     );
   }
