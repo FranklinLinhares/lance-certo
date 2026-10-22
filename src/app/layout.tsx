@@ -46,7 +46,7 @@ async function Menu() {
     data: { user },
   } = await supabase.auth.getUser();
   const { data: empresa } = user
-    ? await supabase.from("empresas").select("papel, nome").eq("id", user.id).maybeSingle()
+    ? await supabase.from("empresas").select("id, papel, nome").eq("id", user.id).maybeSingle()
     : { data: null };
 
   return (
@@ -79,7 +79,7 @@ async function Menu() {
             ))}
           </form>
         )}
-        {empresa && <Link href="/cadastro" className="max-w-[9rem] truncate text-stone-500 hover:text-green-800 sm:max-w-none">{empresa.nome}</Link>}
+        {empresa && <Link href={`/perfil/${empresa.id}`} title="Ver meu perfil e avaliações" className="max-w-[9rem] truncate text-stone-500 hover:text-green-800 sm:max-w-none">{empresa.nome}</Link>}
         {user ? (
           <form action={sair}>
             <button className="text-stone-600 hover:text-red-700">Sair</button>
