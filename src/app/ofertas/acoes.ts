@@ -103,3 +103,53 @@ export async function excluirOferta(form: FormData) {
   revalidatePath("/vitrine");
   redirect(empresa.papel === "fornecedor" ? "/ofertas" : "/vitrine");
 }
+
+export type ItemFolheto = {
+  produto: string;
+  produto_chave: string;
+  descricao: string;
+  categoria: string;
+  unidade: string;
+  preco_unitario: number;
+  quantidade_disponivel: number;
+};
+
+// Publica de uma vez os itens do folheto que o vendedor revisou.
+export async function publicarFolheto(dados: { itens: ItemFolheto[]; validaAte: string; vendePara: string }): Promise<EstadoOferta> {
+  const { supabase, empresa } = await exigirEmpresa();
+  if (empresa.papel !== "fornecedor") return { erro: "Mude para o modo Vender, no menu, para publicar ofertas." };
+  if (dados.itens.length === 0) return { erro: "Marque pelo menos um item para publicar." };
+  if (dados.itens.length > 150) return { erro: "Publique no máximo 150 itens por folheto." };
+
+  // A oferta vale até o fim do dia escolhido, no horário da Paraíba.
+  const validaAte = new Date(`${dados.validaAte}T23:59:59-03:00`);
+  if (Number.isNaN(validaAte.getTime()) || validaAte < new Date()) return { erro: "Escolha uma data de hoje em diante." };
+
+  const linhas = [];
+  for (const item of dados.itens) {
+    const produto = String(item.produto ?? "").trim();
+    const preco = Number(item.preco_unitario);
+    const quantidade = Number(item.quantidade_disponivel);
+    if (!produto) return { erro: "Há um item sem nome." };
+    if (!(item.categoria in CATEGORIAS) || !(item.unidade in UNIDADES)) return { erro: `Confira a categoria e a unidade de "${produto}".` };
+    if (!(preco > 0) || !(quantidade > 0)) return { erro: `Informe preço e estoque maiores que zero em "${produto}".` };
+    linhas.push({
+      fornecedor_id: empresa.id,
+      produto,
+      produto_chave: chaveDoProduto(String(item.produto_chave || "")) || chaveDoProduto(produto),
+      descricao: String(item.descricao ?? "").trim() || null,
+      categoria: item.categoria,
+      unidade: item.unidade,
+      preco_unitario: preco,
+      quantidade_disponivel: quantidade,
+      vende_para: dados.vendePara in PUBLICO ? dados.vendePara : "todos",
+      valida_ate: validaAte.toISOString(),
+    });
+  }
+
+  const { error } = await supabase.from("ofertas").insert(linhas);
+  if (error) return { erro: error.message };
+  revalidatePath("/ofertas");
+  revalidatePath("/vitrine");
+  redirect("/ofertas");
+}

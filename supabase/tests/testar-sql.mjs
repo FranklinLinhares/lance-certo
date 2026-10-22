@@ -267,6 +267,9 @@ for (let i = 0; i < 10; i++) await como(ids.pessoa, `select registrar_uso_ia('pe
 await falha(ids.pessoa, `select registrar_uso_ia('pesquisa')`, [], /limite de 10/);
 await como(ids.pessoa, `select registrar_uso_ia('item')`);
 await como(ids.restaurante, `select registrar_uso_ia('pesquisa')`);
+// E 5 folhetos lidos por dia.
+for (let i = 0; i < 5; i++) await como(ids.restaurante, `select registrar_uso_ia('folheto')`);
+await falha(ids.restaurante, `select registrar_uso_ia('folheto')`, [], /limite de 5/);
 
 // Dá para apagar um fornecedor que venceu um leilão; o pedido fica sem vencedor.
 const pedidoGanho = (await db.query(`select id from pedidos where lance_vencedor_id is not null limit 1`)).rows[0].id;

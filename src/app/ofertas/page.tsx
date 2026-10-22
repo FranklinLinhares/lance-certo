@@ -48,7 +48,10 @@ export default async function MinhasOfertas() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Minhas ofertas</h1>
         {empresa.papel === "fornecedor" ? (
-          <Link href="/ofertas/nova" className="botao">Nova oferta</Link>
+          <div className="flex gap-2">
+            <Link href="/ofertas/folheto" className="botao-secundario">Enviar folheto</Link>
+            <Link href="/ofertas/nova" className="botao">Nova oferta</Link>
+          </div>
         ) : (
           <span className="text-sm text-stone-500">Para anunciar, mude para Vender no menu.</span>
         )}

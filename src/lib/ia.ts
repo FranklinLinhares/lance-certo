@@ -188,3 +188,61 @@ Não invente preços: liste só o que encontrar.`;
   const resultado = organizado.parsed_output;
   return { ...resultado, precos: [...resultado.precos].sort((a, b) => a.preco - b.preco) };
 }
+
+const FolhetoSchema = z.object({
+  loja: z.string().nullable().describe("Nome da loja ou rede que aparece no folheto"),
+  valido_ate: z.string().nullable().describe("Último dia das ofertas no formato AAAA-MM-DD, se o folheto informar"),
+  itens: z.array(
+    z.object({
+      produto: z.string().describe("Nome claro do produto, sem a marca, como um comprador escreveria"),
+      produto_chave: z
+        .string()
+        .describe("Identificador normalizado, minúsculo, sem acento, palavras separadas por hífen, sem marca nem embalagem"),
+      descricao: z.string().describe("Marca, embalagem e tamanho como aparecem no folheto; vazio se não houver"),
+      categoria: z.enum(Object.keys(CATEGORIAS) as [keyof typeof CATEGORIAS, ...(keyof typeof CATEGORIAS)[]]),
+      unidade: z.enum(Object.keys(UNIDADES) as [keyof typeof UNIDADES, ...(keyof typeof UNIDADES)[]]),
+      preco_unitario: z.number().describe("Preço da oferta em R$ pela unidade escolhida"),
+    }),
+  ),
+});
+export type FolhetoLido = z.infer<typeof FolhetoSchema>;
+
+export type ArquivoFolheto = { tipo: "image/jpeg" | "image/png" | "image/webp" | "application/pdf"; base64: string };
+
+const INSTRUCOES_FOLHETO = `Você lê folhetos e encartes de ofertas de alimentos para um app de vendas na Paraíba.
+Liste cada produto em oferta, uma linha por produto, com o preço da oferta (não o preço "de" riscado).
+- Produto vendido por peso (frutas, verduras, carnes, frios a granel): unidade kg e preço por kg.
+- Produto em embalagem (pacote, lata, garrafa, caixa): unidade "un" e preço da embalagem; a embalagem e a marca vão na descrição (ex.: "Tio João, pacote 5 kg").
+- Bebidas vendidas por litro a granel: unidade l. Ovos por dúzia: unidade duzia.
+- Ignore itens que não são alimentos ou bebidas (limpeza, higiene, utilidades).
+- Não invente: se um preço estiver ilegível, deixe o item de fora.`;
+
+// Lê as páginas de um folheto (fotos ou PDF) e devolve os itens em oferta.
+export async function lerFolheto(arquivos: ArquivoFolheto[]): Promise<FolhetoLido> {
+  const hoje = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Fortaleza" });
+  const resposta = await cliente()
+    .messages.stream({
+      model: MODELO,
+      max_tokens: 32000,
+      output_config: { effort: "low", format: zodOutputFormat(FolhetoSchema) },
+      system: INSTRUCOES_FOLHETO,
+      messages: [
+        {
+          role: "user",
+          content: [
+            ...arquivos.map((a) =>
+              a.tipo === "application/pdf"
+                ? ({ type: "document", source: { type: "base64", media_type: a.tipo, data: a.base64 } } as const)
+                : ({ type: "image", source: { type: "base64", media_type: a.tipo, data: a.base64 } } as const),
+            ),
+            { type: "text", text: `Hoje é ${hoje}. Liste os alimentos em oferta neste folheto.` },
+          ],
+        },
+      ],
+    })
+    .finalMessage();
+  if (resposta.stop_reason === "refusal" || !resposta.parsed_output) {
+    throw new Error("A IA não conseguiu ler este folheto. Tente uma foto mais nítida ou o PDF do encarte.");
+  }
+  return resposta.parsed_output;
+}
