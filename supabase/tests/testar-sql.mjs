@@ -15,7 +15,7 @@ await db.exec(`
   create publication supabase_realtime;
   grant usage on schema public, auth to authenticated;
 `);
-for (const arquivo of ["0001_inicial.sql", "0002_cadastro_unico.sql", "0003_ofertas_vende_para.sql", "0004_avaliacoes.sql", "0005_excluir_ofertas.sql", "0006_contatos.sql", "0007_apagar_usuario.sql"]) {
+for (const arquivo of ["0001_inicial.sql", "0002_cadastro_unico.sql", "0003_ofertas_vende_para.sql", "0004_avaliacoes.sql", "0005_excluir_ofertas.sql", "0006_contatos.sql", "0007_apagar_usuario.sql", "0008_concluir_negocio.sql"]) {
   await db.exec(readFileSync(new URL(`../migrations/${arquivo}`, import.meta.url), "utf8"));
 }
 await db.exec(`grant select, insert, update, delete on all tables in schema public to authenticated;`);
@@ -164,6 +164,12 @@ assert.equal(Number(media.rows[0].preco_medio), 5.4);
 
 // Avaliações: o comprador avalia o vendedor e o vendedor avalia o comprador.
 const compraVitrine = (await db.query(`select id from compras where oferta_id = $1`, [ofertaAgricultor])).rows[0].id;
+// Só avalia depois que os dois confirmam que o negócio foi concluído.
+await falha(ids.restaurante, `select avaliar($1, 5)`, [compraVitrine], /confirmarem/);
+await falha(ids.atacado, `select concluir_negocio($1)`, [compraVitrine], /não encontrado/);
+await como(ids.restaurante, `select concluir_negocio($1)`, [compraVitrine]);
+await falha(ids.agricultor, `select avaliar($1, 4)`, [compraVitrine], /confirmarem/);
+await como(ids.agricultor, `select concluir_negocio($1)`, [compraVitrine]);
 await como(ids.restaurante, `select avaliar($1, 5, 'Tomate ótimo, entrega no prazo')`, [compraVitrine]);
 await como(ids.agricultor, `select avaliar($1, 4, 'Pagou certinho')`, [compraVitrine]);
 await falha(ids.atacado, `select avaliar($1, 1)`, [compraVitrine], /não encontrado/);
