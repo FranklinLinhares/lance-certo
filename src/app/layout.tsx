@@ -52,6 +52,9 @@ async function Menu() {
   const { count: aResponder } = empresa
     ? await supabase.from("reservas").select("id", { count: "exact", head: true }).eq("fornecedor_id", empresa.id).eq("situacao", "aguardando")
     : { count: 0 };
+  const { count: naoLidos } = empresa
+    ? await supabase.from("avisos").select("id", { count: "exact", head: true }).eq("empresa_id", empresa.id).eq("lido", false)
+    : { count: 0 };
 
   return (
     <>
@@ -85,6 +88,14 @@ async function Menu() {
               </button>
             ))}
           </form>
+        )}
+        {empresa && (
+          <Link href="/avisos" title="Avisos" aria-label={`Avisos${naoLidos ? `: ${naoLidos} novos` : ""}`} className="relative text-lg leading-none text-stone-600 hover:text-green-800">
+            🔔
+            {!!naoLidos && (
+              <span className="absolute -top-2 -right-2.5 rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">{naoLidos > 9 ? "9+" : naoLidos}</span>
+            )}
+          </Link>
         )}
         {empresa && <Link href={`/perfil/${empresa.id}`} title="Ver meu perfil e avaliações" className="max-w-[9rem] truncate text-stone-500 hover:text-green-800 sm:max-w-none">{empresa.nome}</Link>}
         {user ? (
