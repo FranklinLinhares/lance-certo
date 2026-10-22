@@ -30,7 +30,6 @@ export default async function ConfirmarCompra({ params, searchParams }: PageProp
 
   const pedida = Number(String(quantidade ?? "").replace(",", "."));
   const qtd = pedida > 0 ? Math.min(pedida, Number(oferta.quantidade_disponivel)) : Math.min(1, Number(oferta.quantidade_disponivel));
-  const { data: fornecedor } = await supabase.from("empresas").select("telefone").eq("id", oferta.fornecedor_id).maybeSingle();
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -53,7 +52,7 @@ export default async function ConfirmarCompra({ params, searchParams }: PageProp
             oferta={oferta.id}
             maximo={Number(oferta.quantidade_disponivel)}
             unidade={oferta.unidade}
-            telefone={(fornecedor?.telefone as string | undefined) ?? ""}
+            fornecedorId={oferta.fornecedor_id}
             fornecedor={oferta.fornecedor_nome}
             quantidade={qtd}
           />

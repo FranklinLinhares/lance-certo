@@ -10,11 +10,8 @@ export async function exigirEmpresa() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/entrar");
 
-  const { data: empresa } = await supabase
-    .from("empresas")
-    .select("*")
-    .eq("id", user.id)
-    .maybeSingle<Empresa>();
+  // Os dados completos (documento, telefone, localização) só pela função da própria conta.
+  const { data: empresa } = await supabase.rpc("minha_empresa").maybeSingle<Empresa>();
   if (!empresa) redirect("/cadastro");
 
   return { supabase, user, empresa };

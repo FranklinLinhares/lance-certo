@@ -7,6 +7,7 @@ import { SeloPreco } from "@/components/SeloPreco";
 import { mediaParaPedido } from "@/lib/escudo";
 import { Estrelas } from "@/components/Estrelas";
 import { buscarReputacao } from "@/lib/reputacao";
+import { buscarTelefones } from "@/lib/telefones";
 import { ConclusaoNegocio, type EstadoConclusao } from "@/components/ConclusaoNegocio";
 import { cancelarPedido } from "../acoes";
 import { trocarModo } from "@/app/cadastro/modo";
@@ -31,7 +32,7 @@ type Pedido = {
   lance_vencedor_id: string | null;
   referencia_preco: Referencia | null;
   convidados: string[] | null;
-  comprador: { nome: string; cidade: string; telefone: string };
+  comprador: { nome: string; cidade: string };
 };
 type Lance = {
   id: string;
@@ -40,7 +41,7 @@ type Lance = {
   validade: string | null;
   observacao: string | null;
   criado_em: string;
-  fornecedor: { nome: string; cidade: string; telefone: string; agricultor: boolean } | null;
+  fornecedor: { nome: string; cidade: string; agricultor: boolean } | null;
 };
 
 export default async function DetalhePedido({ params }: PageProps<"/pedidos/[id]">) {
@@ -49,7 +50,7 @@ export default async function DetalhePedido({ params }: PageProps<"/pedidos/[id]
 
   const { data: pedido } = await supabase
     .from("pedidos")
-    .select("*, comprador:empresas!pedidos_comprador_id_fkey(nome, cidade, telefone)")
+    .select("*, comprador:empresas!pedidos_comprador_id_fkey(nome, cidade)")
     .eq("id", id)
     .maybeSingle<Pedido>();
   if (!pedido) notFound();
@@ -57,7 +58,7 @@ export default async function DetalhePedido({ params }: PageProps<"/pedidos/[id]
   // A política de segurança já filtra os lances conforme a visibilidade escolhida.
   const { data } = await supabase
     .from("lances")
-    .select("*, fornecedor:empresas!lances_fornecedor_id_fkey(nome, cidade, telefone, agricultor)")
+    .select("*, fornecedor:empresas!lances_fornecedor_id_fkey(nome, cidade, agricultor)")
     .eq("pedido_id", id)
     .order("preco_unitario")
     .order("criado_em");
@@ -80,6 +81,8 @@ export default async function DetalhePedido({ params }: PageProps<"/pedidos/[id]
   const aberto = pedido.status === "aberto" && new Date(pedido.encerra_em) > new Date();
   const vencedor = lances.find((l) => l.id === pedido.lance_vencedor_id);
   const souVencedor = vencedor?.fornecedor_id === empresa.id;
+  // O WhatsApp da outra parte só aparece depois do negócio fechado.
+  const telefones = await buscarTelefones(supabase, vencedor ? [vencedor.fornecedor_id, pedido.comprador_id] : []);
   // Negócio fechado: comprador e vencedor avaliam um ao outro ali mesmo.
   let compraFechada: EstadoConclusao | null = null;
   let notaDada: number | undefined;
@@ -146,9 +149,9 @@ export default async function DetalhePedido({ params }: PageProps<"/pedidos/[id]
         <div className="cartao border-green-700 bg-green-50">
           <h2 className="font-semibold">Negócio fechado: {porUnidade(vencedor.preco_unitario, u)}</h2>
           {souComprador ? (
-            <p>Fornecedor: {vencedor.fornecedor?.nome} ({vencedor.fornecedor?.cidade}) · <a className="underline" target="_blank" rel="noreferrer" href={`https://wa.me/55${vencedor.fornecedor?.telefone}`}>WhatsApp</a></p>
+            <p>Fornecedor: {vencedor.fornecedor?.nome} ({vencedor.fornecedor?.cidade}) · <a className="underline" target="_blank" rel="noreferrer" href={`https://wa.me/55${telefones.get(vencedor.fornecedor_id) ?? ""}`}>WhatsApp</a></p>
           ) : (
-            <p>Você venceu! Comprador: {pedido.comprador.nome} · <a className="underline" target="_blank" rel="noreferrer" href={`https://wa.me/55${pedido.comprador.telefone}`}>WhatsApp</a></p>
+            <p>Você venceu! Comprador: {pedido.comprador.nome} · <a className="underline" target="_blank" rel="noreferrer" href={`https://wa.me/55${telefones.get(pedido.comprador_id) ?? ""}`}>WhatsApp</a></p>
           )}
           {compraFechada && (
             <div className="mt-3 border-t border-green-200 pt-3">

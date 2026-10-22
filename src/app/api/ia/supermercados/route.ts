@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { criarClienteServidor } from "@/lib/supabase/server";
+import { registrarUsoIa } from "@/lib/limite-ia";
 import { iaDisponivel, pesquisarSupermercados } from "@/lib/ia";
 import { UNIDADES, type Empresa } from "@/lib/dominio";
 
@@ -17,6 +18,8 @@ export async function POST(request: Request) {
 
   const { data: empresa } = await supabase.from("empresas").select("cidade, uf").eq("id", user.id).single<Pick<Empresa, "cidade" | "uf">>();
   if (!empresa) return NextResponse.json({ erro: "Complete seu cadastro primeiro." }, { status: 400 });
+  const limite = await registrarUsoIa(supabase, "pesquisa");
+  if (limite) return NextResponse.json({ erro: limite }, { status: 429 });
 
   const corpo = (await request.json()) as { produto?: string; unidade?: string; raio_km?: number };
   const produto = corpo.produto?.trim();

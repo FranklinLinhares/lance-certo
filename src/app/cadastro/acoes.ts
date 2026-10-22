@@ -54,8 +54,7 @@ export async function salvarEmpresa(_: EstadoCadastro, form: FormData): Promise<
     .map(String)
     .filter((c): c is Categoria => c in CATEGORIAS);
 
-  const { error } = await supabase.from("empresas").upsert({
-    id: user.id,
+  const dados = {
     papel,
     tipo_documento: tipoDocumento,
     documento,
@@ -71,7 +70,11 @@ export async function salvarEmpresa(_: EstadoCadastro, form: FormData): Promise<
     lng,
     raio_km: Math.min(500, Math.max(1, Number(form.get("raio_km")) || 30)),
     categorias,
-  });
+  };
+  // Sem upsert: ele precisaria ler colunas que as outras contas não podem ver.
+  const { error } = atual
+    ? await supabase.from("empresas").update(dados).eq("id", user.id)
+    : await supabase.from("empresas").insert({ id: user.id, ...dados });
   if (error) {
     if (error.code === "23505") return { erro: "Este documento já está cadastrado em outra conta." };
     return { erro: error.message };

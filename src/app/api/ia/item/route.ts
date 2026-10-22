@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { criarClienteServidor } from "@/lib/supabase/server";
+import { registrarUsoIa } from "@/lib/limite-ia";
 import { estruturarItem, iaDisponivel } from "@/lib/ia";
 
 // Transforma o texto livre de um pedido ou oferta em campos preenchidos.
@@ -15,6 +16,8 @@ export async function POST(request: Request) {
   if (!texto || texto.trim().length < 3 || texto.length > 2000) {
     return NextResponse.json({ erro: "Descreva o produto em poucas palavras." }, { status: 400 });
   }
+  const limite = await registrarUsoIa(supabase, "item");
+  if (limite) return NextResponse.json({ erro: limite }, { status: 429 });
   try {
     return NextResponse.json(await estruturarItem(texto));
   } catch (e) {
