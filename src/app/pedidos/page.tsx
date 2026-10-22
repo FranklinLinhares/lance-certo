@@ -24,18 +24,22 @@ export default async function Pedidos() {
   const { supabase, empresa } = await exigirEmpresa();
   const vendendo = empresa.papel === "fornecedor";
 
-  // Os leilões que a conta criou aparecem sempre, mesmo no modo Vender, para poder escolher o vencedor.
-  const { data: meus, error: erroMeus } = await supabase
-    .from("pedidos")
-    .select("id, produto, categoria, unidade, quantidade, encerra_em, status, lances_visiveis, lances!lances_pedido_id_fkey(count)")
-    .eq("comprador_id", empresa.id)
-    .order("criado_em", { ascending: false });
-  if (erroMeus) throw new Error(erroMeus.message);
-  const meusLeiloes = (meus ?? []).map((p) => ({ ...p, total_lances: (p.lances as { count: number }[])[0]?.count ?? 0 })) as Linha[];
-
-  // Leilões de outros compradores só no modo Vender, que é quando a conta pode dar lance.
-  const { data: proximos } = vendendo ? await supabase.rpc("pedidos_proximos") : { data: [] };
-  const paraLance = (proximos ?? []) as Linha[];
+  // Modo Vender: só leilões de outros compradores, para dar lance.
+  // Modo Comprar: só os leilões que a conta criou.
+  let paraLance: Linha[] = [];
+  let meusLeiloes: Linha[] = [];
+  if (vendendo) {
+    const { data: proximos } = await supabase.rpc("pedidos_proximos");
+    paraLance = (proximos ?? []) as Linha[];
+  } else {
+    const { data: meus, error: erroMeus } = await supabase
+      .from("pedidos")
+      .select("id, produto, categoria, unidade, quantidade, encerra_em, status, lances_visiveis, lances!lances_pedido_id_fkey(count)")
+      .eq("comprador_id", empresa.id)
+      .order("criado_em", { ascending: false });
+    if (erroMeus) throw new Error(erroMeus.message);
+    meusLeiloes = (meus ?? []).map((p) => ({ ...p, total_lances: (p.lances as { count: number }[])[0]?.count ?? 0 })) as Linha[];
+  }
 
   return (
     <div className="space-y-6">
@@ -59,11 +63,8 @@ export default async function Pedidos() {
         )}
       </section>
 
-      {vendendo && meusLeiloes.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Seus leilões de compra</h2>
-          <ListaLeiloes pedidos={meusLeiloes} vendendo={false} />
-        </section>
+      {vendendo && (
+        <p className="text-sm text-stone-500">Seus próprios leilões ficam em Comprar, no menu.</p>
       )}
     </div>
   );

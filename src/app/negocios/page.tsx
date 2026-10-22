@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { exigirEmpresa } from "@/lib/sessao";
 import { dataHora, porUnidade, type Unidade } from "@/lib/dominio";
-import { Avaliar } from "@/components/Avaliar";
 import { buscarTelefones } from "@/lib/telefones";
+import { ConclusaoNegocio } from "@/components/ConclusaoNegocio";
 
 type Negocio = {
   id: string;
@@ -12,6 +12,8 @@ type Negocio = {
   preco_unitario: number;
   origem: "leilao" | "vitrine";
   criado_em: string;
+  concluido_comprador_em: string | null;
+  concluido_fornecedor_em: string | null;
   comprador: { id: string; nome: string } | null;
   fornecedor: { id: string; nome: string } | null;
 };
@@ -23,7 +25,7 @@ export default async function Negocios() {
   const { data } = await supabase
     .from("compras")
     .select(
-      "id, produto, unidade, quantidade, preco_unitario, origem, criado_em, comprador:empresas!compras_comprador_id_fkey(id, nome), fornecedor:empresas!compras_fornecedor_id_fkey(id, nome)",
+      "id, produto, unidade, quantidade, preco_unitario, origem, criado_em, concluido_comprador_em, concluido_fornecedor_em, comprador:empresas!compras_comprador_id_fkey(id, nome), fornecedor:empresas!compras_fornecedor_id_fkey(id, nome)",
     )
     .not("fornecedor_id", "is", null)
     .or(`comprador_id.eq.${empresa.id},fornecedor_id.eq.${empresa.id}`)
@@ -38,7 +40,7 @@ export default async function Negocios() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Meus negócios</h1>
-      <p className="text-stone-600">Avalie quem comprou ou vendeu com você. As notas aparecem no perfil de cada um.</p>
+      <p className="text-stone-600">Quando o negócio terminar, confirme aqui. Depois que você e a outra parte confirmarem, cada um avalia o outro, e as notas aparecem no perfil.</p>
       {negocios.length === 0 && <p className="cartao text-stone-600">Você ainda não fechou negócios pelo app.</p>}
       <ul className="space-y-3">
         {negocios.map((n) => {
@@ -64,14 +66,7 @@ export default async function Negocios() {
                   </div>
                 )}
               </div>
-              {outro &&
-                (nota ? (
-                  <p className="text-sm text-stone-600">
-                    Você avaliou com <span className="text-amber-700">{"★".repeat(nota)}</span>.
-                  </p>
-                ) : (
-                  <Avaliar compra={n.id} nome={outro.nome} />
-                ))}
+              {outro && <ConclusaoNegocio compra={n} souComprador={!vendi} nomeOutro={outro.nome} notaDada={nota} />}
             </li>
           );
         })}

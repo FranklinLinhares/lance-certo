@@ -171,6 +171,12 @@ assert.equal(Number(media.rows[0].preco_medio), 5.4);
 
 // Avaliações: o comprador avalia o vendedor e o vendedor avalia o comprador.
 const compraVitrine = (await db.query(`select id from compras where oferta_id = $1`, [ofertaAgricultor])).rows[0].id;
+// Só avalia depois que os dois confirmam que o negócio foi concluído.
+await falha(ids.restaurante, `select avaliar($1, 5)`, [compraVitrine], /confirmarem/);
+await falha(ids.atacado, `select concluir_negocio($1)`, [compraVitrine], /não encontrado/);
+await como(ids.restaurante, `select concluir_negocio($1)`, [compraVitrine]);
+await falha(ids.agricultor, `select avaliar($1, 4)`, [compraVitrine], /confirmarem/);
+await como(ids.agricultor, `select concluir_negocio($1)`, [compraVitrine]);
 await como(ids.restaurante, `select avaliar($1, 5, 'Tomate ótimo, entrega no prazo')`, [compraVitrine]);
 await como(ids.agricultor, `select avaliar($1, 4, 'Pagou certinho')`, [compraVitrine]);
 await falha(ids.atacado, `select avaliar($1, 1)`, [compraVitrine], /não encontrado/);

@@ -8,7 +8,7 @@ import { mediaParaPedido } from "@/lib/escudo";
 import { Estrelas } from "@/components/Estrelas";
 import { buscarReputacao } from "@/lib/reputacao";
 import { buscarTelefones } from "@/lib/telefones";
-import { Avaliar } from "@/components/Avaliar";
+import { ConclusaoNegocio, type EstadoConclusao } from "@/components/ConclusaoNegocio";
 import { cancelarPedido } from "../acoes";
 import { trocarModo } from "@/app/cadastro/modo";
 import { AoVivo } from "./AoVivo";
@@ -84,18 +84,23 @@ export default async function DetalhePedido({ params }: PageProps<"/pedidos/[id]
   // O WhatsApp da outra parte só aparece depois do negócio fechado.
   const telefones = await buscarTelefones(supabase, vencedor ? [vencedor.fornecedor_id, pedido.comprador_id] : []);
   // Negócio fechado: comprador e vencedor avaliam um ao outro ali mesmo.
-  let compraFechada: string | null = null;
-  let jaAvaliei = false;
+  let compraFechada: EstadoConclusao | null = null;
+  let notaDada: number | undefined;
   if (pedido.status === "fechado" && (souComprador || souVencedor)) {
-    const { data: compra } = await supabase.from("compras").select("id").eq("pedido_id", id).maybeSingle();
-    compraFechada = (compra?.id as string | undefined) ?? null;
+    const { data: compra } = await supabase
+      .from("compras")
+      .select("id, concluido_comprador_em, concluido_fornecedor_em")
+      .eq("pedido_id", id)
+      .maybeSingle<EstadoConclusao>();
+    compraFechada = compra ?? null;
     if (compraFechada) {
-      const { count } = await supabase
+      const { data: minha } = await supabase
         .from("avaliacoes")
-        .select("id", { count: "exact", head: true })
-        .eq("compra_id", compraFechada)
-        .eq("avaliador_id", empresa.id);
-      jaAvaliei = (count ?? 0) > 0;
+        .select("nota")
+        .eq("compra_id", compraFechada.id)
+        .eq("avaliador_id", empresa.id)
+        .maybeSingle();
+      notaDada = (minha?.nota as number | undefined) ?? undefined;
     }
   }
 
@@ -148,10 +153,14 @@ export default async function DetalhePedido({ params }: PageProps<"/pedidos/[id]
           ) : (
             <p>Você venceu! Comprador: {pedido.comprador.nome} · <a className="underline" target="_blank" rel="noreferrer" href={`https://wa.me/55${telefones.get(pedido.comprador_id) ?? ""}`}>WhatsApp</a></p>
           )}
-          {compraFechada && !jaAvaliei && (
-            <div className="mt-3 space-y-1 border-t border-green-200 pt-3">
-              <p className="text-sm font-medium">Avalie {souComprador ? vencedor.fornecedor?.nome : pedido.comprador.nome}</p>
-              <Avaliar compra={compraFechada} nome={(souComprador ? vencedor.fornecedor?.nome : pedido.comprador.nome) ?? ""} />
+          {compraFechada && (
+            <div className="mt-3 border-t border-green-200 pt-3">
+              <ConclusaoNegocio
+                compra={compraFechada}
+                souComprador={souComprador}
+                nomeOutro={(souComprador ? vencedor.fornecedor?.nome : pedido.comprador.nome) ?? ""}
+                notaDada={notaDada}
+              />
             </div>
           )}
         </div>

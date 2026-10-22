@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { exigirEmpresa } from "@/lib/sessao";
 import { buscarReputacao } from "@/lib/reputacao";
@@ -25,7 +26,8 @@ type Avaliacao = {
 // Perfil público com a reputação como vendedor e como comprador.
 export default async function PerfilPublico({ params }: PageProps<"/perfil/[id]">) {
   const { id } = await params;
-  const { supabase } = await exigirEmpresa();
+  const { supabase, empresa } = await exigirEmpresa();
+  const meuPerfil = empresa.id === id;
 
   const { data: perfil } = await supabase
     .from("empresas")
@@ -52,6 +54,11 @@ export default async function PerfilPublico({ params }: PageProps<"/perfil/[id]"
           {perfil.agricultor && " · Agricultura familiar"} · {perfil.cidade}/{perfil.uf}
         </p>
         <p className="text-sm text-stone-500">No Lance Certo desde {new Date(perfil.criado_em).toLocaleDateString("pt-BR")}</p>
+        {meuPerfil && (
+          <p className="pt-2 text-sm">
+            Este é o seu perfil, como os outros veem. <Link href="/cadastro" className="underline">Editar cadastro</Link>
+          </p>
+        )}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
