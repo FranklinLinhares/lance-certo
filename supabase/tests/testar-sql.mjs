@@ -288,6 +288,29 @@ await como(ids.restaurante, `select registrar_uso_ia('pesquisa')`);
 for (let i = 0; i < 5; i++) await como(ids.restaurante, `select registrar_uso_ia('folheto')`);
 await falha(ids.restaurante, `select registrar_uso_ia('folheto')`, [], /limite de 5/);
 
+// Avisos: cada evento avisa quem precisa agir.
+const avisos = async (uid) => (await como(uid, `select texto, link, lido from avisos order by criado_em`)).rows.map((r) => r.texto);
+assert.ok((await avisos(ids.restaurante)).some((t) => t.startsWith("Lance novo no seu leilão")), "comprador sabe do lance");
+assert.ok((await avisos(ids.agricultor)).some((t) => t.includes("quer comprar")), "vendedor sabe do pedido da vitrine");
+assert.ok((await avisos(ids.restaurante)).some((t) => t.includes("aceitou seu pedido")), "comprador sabe do aceite");
+assert.ok((await avisos(ids.restaurante)).some((t) => t.includes("recusou seu pedido")), "comprador sabe da recusa");
+assert.ok((await avisos(ids.longe)).some((t) => t.endsWith("de Feijão")), "convidado de longe é avisado");
+assert.ok(!(await avisos(ids.atacado)).some((t) => t.endsWith("de Feijão")), "quem não foi convidado não é avisado");
+await falha(ids.atacado, `insert into avisos (empresa_id, texto, link) values ($1, 'x', '/')`, [ids.restaurante], /permission denied/);
+await como(ids.atacado, `update avisos set lido = true where empresa_id = $1`, [ids.restaurante]);
+assert.ok((await db.query(`select 1 from avisos where empresa_id = $1 and not lido`, [ids.restaurante])).rows.length > 0, "outra conta não mexe nos avisos");
+await como(ids.restaurante, `update avisos set lido = true where not lido`);
+assert.equal((await db.query(`select 1 from avisos where empresa_id = $1 and not lido`, [ids.restaurante])).rows.length, 0);
+
+// Alerta de preço: avisa quando aparece oferta dentro do preço, para quem pode comprar.
+await como(ids.restaurante, `insert into alertas_preco (empresa_id, produto, produto_chave, unidade, preco_maximo) values ($1, 'Cebola', 'cebola', 'kg', 4)`, [ids.restaurante]);
+assert.equal((await como(ids.atacado, `select * from alertas_preco`)).rows.length, 0, "alertas são privados");
+await como(ids.atacado, `insert into ofertas (fornecedor_id, produto, produto_chave, categoria, unidade, preco_unitario, quantidade_disponivel)
+  values ($1, 'Cebola', 'cebola', 'hortifruti', 'kg', 5, 100)`, [ids.atacado]);
+assert.ok(!(await avisos(ids.restaurante)).some((t) => t.includes("Cebola")), "acima do preço não avisa");
+await como(ids.atacado, `update ofertas set preco_unitario = 3.80 where produto_chave = 'cebola'`);
+assert.ok((await avisos(ids.restaurante)).some((t) => t.includes("Alerta de preço: Cebola a R$ 3,80")), "baixou de preço e avisou");
+
 // Dá para apagar um fornecedor que venceu um leilão; o pedido fica sem vencedor.
 const pedidoGanho = (await db.query(`select id from pedidos where lance_vencedor_id is not null limit 1`)).rows[0].id;
 const vencedorDoPedido = (await db.query(`select l.fornecedor_id f from pedidos p join lances l on l.id = p.lance_vencedor_id where p.id = $1`, [pedidoGanho])).rows[0].f;
