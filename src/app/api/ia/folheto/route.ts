@@ -8,7 +8,7 @@ export const maxDuration = 300;
 
 const TIPOS = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 // A Vercel aceita até 4,5 MB por requisição; o navegador já reduz as fotos antes de enviar.
-const TAMANHO_MAXIMO = 4_000_000;
+const TAMANHO_MAXIMO = 4_400_000;
 
 // Lê um folheto de ofertas (fotos ou PDF) e devolve os itens para o vendedor revisar.
 export async function POST(request: Request) {
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   if (arquivos.some((a) => !TIPOS.includes(a.tipo) || typeof a.base64 !== "string")) {
     return NextResponse.json({ erro: "Envie fotos (JPG, PNG) ou PDF." }, { status: 400 });
   }
-  if (arquivos.reduce((t, a) => t + a.base64.length * 0.75, 0) > TAMANHO_MAXIMO) {
+  if (arquivos.reduce((t, a) => t + a.base64.length, 0) > TAMANHO_MAXIMO) {
     return NextResponse.json({ erro: "O folheto passou de 4 MB. Envie menos páginas ou um PDF menor." }, { status: 413 });
   }
 
