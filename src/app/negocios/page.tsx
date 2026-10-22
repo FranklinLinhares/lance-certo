@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { exigirEmpresa } from "@/lib/sessao";
-import { dataHora, porUnidade, type Unidade } from "@/lib/dominio";
+import { dataHora, porUnidade, reais, type Unidade } from "@/lib/dominio";
 import { buscarTelefones } from "@/lib/telefones";
 import { ConclusaoNegocio } from "@/components/ConclusaoNegocio";
+import { cancelarReserva, responderReserva } from "./acoes";
 
 type Negocio = {
   id: string;
@@ -17,6 +18,24 @@ type Negocio = {
   comprador: { id: string; nome: string } | null;
   fornecedor: { id: string; nome: string } | null;
 };
+
+type Reserva = {
+  id: string;
+  produto: string;
+  unidade: Unidade;
+  quantidade: number;
+  preco_unitario: number;
+  situacao: "aguardando" | "aceita" | "recusada" | "cancelada";
+  criado_em: string;
+  comprador: { id: string; nome: string } | null;
+  fornecedor: { id: string; nome: string } | null;
+};
+
+function haSeteDias() {
+  return new Date(Date.now() - 7 * 86_400_000).toISOString();
+}
+
+const RESPOSTA = { recusada: "O vendedor recusou", cancelada: "Você desistiu" } as const;
 
 // Compras e vendas feitas no app, com a avaliação da outra parte.
 export default async function Negocios() {
@@ -34,6 +53,20 @@ export default async function Negocios() {
   const negocios = (data ?? []) as unknown as Negocio[];
   const telefones = await buscarTelefones(supabase, negocios.flatMap((n) => [n.comprador?.id, n.fornecedor?.id]));
 
+  // Pedidos da vitrine esperando o vendedor, e os recusados ou desistidos da última semana.
+  const { data: dadosReservas } = await supabase
+    .from("reservas")
+    .select(
+      "id, produto, unidade, quantidade, preco_unitario, situacao, criado_em, comprador:empresas!reservas_comprador_id_fkey(id, nome), fornecedor:empresas!reservas_fornecedor_id_fkey(id, nome)",
+    )
+    .or(`situacao.eq.aguardando,respondido_em.gte.${haSeteDias()}`)
+    .neq("situacao", "aceita")
+    .order("criado_em", { ascending: false })
+    .returns<Reserva[]>();
+  const reservas = dadosReservas ?? [];
+  const paraResponder = reservas.filter((r) => r.situacao === "aguardando" && r.fornecedor?.id === empresa.id);
+  const meusPedidos = reservas.filter((r) => r.comprador?.id === empresa.id);
+
   const { data: minhas } = await supabase.from("avaliacoes").select("compra_id, nota").eq("avaliador_id", empresa.id);
   const notaDada = new Map((minhas ?? []).map((a) => [a.compra_id as string, a.nota as number]));
 
@@ -41,6 +74,51 @@ export default async function Negocios() {
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Meus negócios</h1>
       <p className="text-stone-600">Quando o negócio terminar, confirme aqui. Depois que você e a outra parte confirmarem, cada um avalia o outro, e as notas aparecem no perfil.</p>
+      {paraResponder.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-lg font-semibold">Pedidos para você responder</h2>
+          <ul className="space-y-3">
+            {paraResponder.map((r) => (
+              <li key={r.id} className="cartao space-y-2 border-amber-400 bg-amber-50">
+                <div>
+                  <Link href={`/perfil/${r.comprador?.id}`} className="font-medium text-green-800 underline">{r.comprador?.nome}</Link> quer comprar{" "}
+                  <strong>{r.quantidade} {r.unidade} de {r.produto}</strong> a {porUnidade(r.preco_unitario, r.unidade)}.
+                  <div className="text-sm text-stone-500">{dataHora(r.criado_em)} · total {reais(r.preco_unitario * r.quantidade)}</div>
+                </div>
+                <form action={responderReserva} className="flex gap-2">
+                  <input type="hidden" name="reserva" value={r.id} />
+                  <button name="resposta" value="aceitar" className="botao">Aceitar</button>
+                  <button name="resposta" value="recusar" className="botao-secundario">Recusar</button>
+                </form>
+                <p className="text-xs text-stone-500">Ao aceitar, vocês veem o WhatsApp um do outro. Ao recusar, a quantidade volta para a oferta.</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {meusPedidos.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-lg font-semibold">Seus pedidos na vitrine</h2>
+          <ul className="space-y-3">
+            {meusPedidos.map((r) => (
+              <li key={r.id} className="cartao flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <span className="font-medium">{r.quantidade} {r.unidade} de {r.produto}</span> com {r.fornecedor?.nome}
+                  <div className="text-sm text-stone-500">
+                    {r.situacao === "aguardando" ? "Aguardando o vendedor aceitar" : RESPOSTA[r.situacao as keyof typeof RESPOSTA]} · {dataHora(r.criado_em)}
+                  </div>
+                </div>
+                {r.situacao === "aguardando" && (
+                  <form action={cancelarReserva}>
+                    <input type="hidden" name="reserva" value={r.id} />
+                    <button className="botao-secundario py-1 text-sm">Desistir</button>
+                  </form>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {negocios.length === 0 && <p className="cartao text-stone-600">Você ainda não fechou negócios pelo app.</p>}
       <ul className="space-y-3">
         {negocios.map((n) => {

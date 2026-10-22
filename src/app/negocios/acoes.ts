@@ -24,3 +24,22 @@ export async function concluirNegocio(form: FormData) {
   if (error) throw new Error(error.message);
   revalidatePath("/", "layout");
 }
+
+// Vendedor aceita ou recusa um pedido feito pela vitrine.
+export async function responderReserva(form: FormData) {
+  const { supabase } = await exigirEmpresa();
+  const { error } = await supabase.rpc("responder_reserva", {
+    p_reserva: String(form.get("reserva")),
+    p_aceitar: form.get("resposta") === "aceitar",
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath("/", "layout");
+}
+
+// Comprador desiste do pedido enquanto o vendedor não respondeu.
+export async function cancelarReserva(form: FormData) {
+  const { supabase } = await exigirEmpresa();
+  const { error } = await supabase.rpc("cancelar_reserva", { p_reserva: String(form.get("reserva")) });
+  if (error) throw new Error(error.message);
+  revalidatePath("/", "layout");
+}

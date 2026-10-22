@@ -94,7 +94,7 @@ await db.exec(`update empresas set negocia_com = 'todos' where id = '${ids.ataca
 await db.exec(`update ofertas set vende_para = 'pj' where fornecedor_id = '${ids.agricultor}'`);
 assert.deepEqual((await como(ids.pessoa, `select fornecedor_nome from vitrine_ofertas('tomate')`)).rows.map((r) => r.fornecedor_nome), ["Atacado Litoral"]);
 const soEmpresas = (await db.query(`select id from ofertas where fornecedor_id = $1`, [ids.agricultor])).rows[0].id;
-await falha(ids.pessoa, `select comprar_oferta($1, 1)`, [soEmpresas], /só para empresas/);
+await falha(ids.pessoa, `select reservar_oferta($1, 1)`, [soEmpresas], /só para empresas/);
 const paraRestaurante = await como(ids.restaurante, `select fornecedor_nome, fornecedor_pj from vitrine_ofertas('tomate')`);
 assert.equal(paraRestaurante.rows.length, 2, "o restaurante tem CNPJ e vê a oferta só para empresas");
 assert.equal(paraRestaurante.rows.find((r) => r.fornecedor_nome === "Sítio Boa Vista").fornecedor_pj, false, "agricultor com CPF");
@@ -104,7 +104,7 @@ await db.exec(`update empresas set papel = 'comprador' where id = '${ids.atacado
 assert.ok((await como(ids.atacado, `select fornecedor_nome from vitrine_ofertas('tomate')`)).rows.some((r) => r.fornecedor_nome === "Atacado Litoral"),
   "a própria oferta aparece na vitrine (marcada como sua no app)");
 const propria = (await db.query(`select id from ofertas where fornecedor_id = $1`, [ids.atacado])).rows[0].id;
-await falha(ids.atacado, `select comprar_oferta($1, 1)`, [propria], /própria oferta/);
+await falha(ids.atacado, `select reservar_oferta($1, 1)`, [propria], /própria oferta/);
 await db.exec(`update empresas set papel = 'fornecedor' where id = '${ids.atacado}'`);
 
 // Pedido aberto (lances visíveis) e pedido fechado (lances ocultos).
@@ -153,9 +153,26 @@ assert.equal((await db.query(`select status from pedidos where id = $1`, [aberto
 
 // Compra pela vitrine baixa o estoque.
 const ofertaAgricultor = (await db.query(`select id from ofertas where fornecedor_id = $1`, [ids.agricultor])).rows[0].id;
-await falha(ids.restaurante, `select comprar_oferta($1, 500)`, [ofertaAgricultor], /Quantidade indisponível/);
-await como(ids.restaurante, `select comprar_oferta($1, 50)`, [ofertaAgricultor]);
+await falha(ids.restaurante, `select reservar_oferta($1, 500)`, [ofertaAgricultor], /Quantidade indisponível/);
+const reserva = (await como(ids.restaurante, `select id from reservar_oferta($1, 50)`, [ofertaAgricultor])).rows[0].id;
 assert.equal(Number((await db.query(`select quantidade_disponivel q from ofertas where id = $1`, [ofertaAgricultor])).rows[0].q), 150);
+// O pedido fica aguardando: ainda não é compra, e só o vendedor responde.
+assert.equal((await db.query(`select 1 from compras where oferta_id = $1`, [ofertaAgricultor])).rows.length, 0);
+await falha(ids.restaurante, `select responder_reserva($1, true)`, [reserva], /não encontrado/);
+await falha(ids.atacado, `select responder_reserva($1, true)`, [reserva], /não encontrado/);
+await falha(ids.restaurante, `insert into reservas (comprador_id, fornecedor_id, produto, produto_chave, categoria, unidade, quantidade, preco_unitario)
+  values ($1, $2, 'x', 'x', 'graos', 'kg', 1, 1)`, [ids.restaurante, ids.agricultor], /permission denied/);
+assert.equal((await como(ids.atacado, `select * from reservas`)).rows.length, 0, "outra conta não vê o pedido");
+await como(ids.agricultor, `select responder_reserva($1, true)`, [reserva]);
+await falha(ids.agricultor, `select responder_reserva($1, false)`, [reserva], /já foi respondido/);
+await falha(ids.restaurante, `select cancelar_reserva($1)`, [reserva], /já respondeu/);
+// Recusar ou desistir devolve o estoque.
+const recusada = (await como(ids.restaurante, `select id from reservar_oferta($1, 20)`, [ofertaAgricultor])).rows[0].id;
+await como(ids.agricultor, `select responder_reserva($1, false)`, [recusada]);
+const desistida = (await como(ids.restaurante, `select id from reservar_oferta($1, 30)`, [ofertaAgricultor])).rows[0].id;
+await como(ids.restaurante, `select cancelar_reserva($1)`, [desistida]);
+assert.equal(Number((await db.query(`select quantidade_disponivel q from ofertas where id = $1`, [ofertaAgricultor])).rows[0].q), 150);
+assert.equal((await db.query(`select count(*) n from compras where oferta_id = $1`, [ofertaAgricultor])).rows[0].n, 1);
 
 // Histórico semanal com variação.
 await como(ids.restaurante, `insert into compras (comprador_id, fornecedor_nome, produto, produto_chave, categoria, unidade, quantidade, preco_unitario, origem, data)
@@ -233,13 +250,13 @@ const ofertaFechada = (await como(ids.atacado, `insert into ofertas (fornecedor_
   values ($1, 'Arroz', 'arroz', 'graos', 'kg', 5, 100, array[$2]::uuid[]) returning id`, [ids.atacado, ids.restaurante])).rows[0].id;
 assert.ok((await como(ids.restaurante, `select id from vitrine_ofertas('arroz')`)).rows.some((r) => r.id === ofertaFechada));
 assert.ok(!(await como(ids.pessoa, `select id from vitrine_ofertas('arroz')`)).rows.some((r) => r.id === ofertaFechada), "quem não é cliente não vê");
-await falha(ids.pessoa, `select comprar_oferta($1, 1)`, [ofertaFechada], /clientes escolhidos/);
-await como(ids.restaurante, `select comprar_oferta($1, 1)`, [ofertaFechada]);
+await falha(ids.pessoa, `select reservar_oferta($1, 1)`, [ofertaFechada], /clientes escolhidos/);
+await como(ids.restaurante, `select reservar_oferta($1, 1)`, [ofertaFechada]);
 
 // Levar todo o estoque esgota a oferta.
 const pouca = (await como(ids.agricultor, `insert into ofertas (fornecedor_id, produto, produto_chave, categoria, unidade, preco_unitario, quantidade_disponivel)
   values ($1, 'Macaxeira', 'macaxeira', 'hortifruti', 'kg', 3.00, 10) returning id`, [ids.agricultor])).rows[0].id;
-await como(ids.restaurante, `select comprar_oferta($1, 10)`, [pouca]);
+await como(ids.restaurante, `select reservar_oferta($1, 10)`, [pouca]);
 const esgotada = (await db.query(`select quantidade_disponivel q, ativa from ofertas where id = $1`, [pouca])).rows[0];
 assert.equal(Number(esgotada.q), 0);
 assert.equal(esgotada.ativa, false);

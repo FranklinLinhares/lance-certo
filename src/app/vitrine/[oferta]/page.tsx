@@ -45,14 +45,13 @@ export default async function ConfirmarCompra({ params, searchParams }: PageProp
       {empresa.papel === "comprador" ? (
         <div className="cartao space-y-2">
           <p className="text-sm text-stone-600">
-            Confira a quantidade e quem vende. Ao confirmar, a compra fica registrada e você combina a entrega pelo WhatsApp.
+            Confira a quantidade e quem vende. O pedido vai para o vendedor e a quantidade fica reservada. Quando ele aceitar, o WhatsApp dele aparece em Negócios para vocês combinarem a entrega.
             Total estimado para {qtd} {oferta.unidade}: <strong>{reais(qtd * Number(oferta.preco_unitario))}</strong>.
           </p>
           <Comprar
             oferta={oferta.id}
             maximo={Number(oferta.quantidade_disponivel)}
             unidade={oferta.unidade}
-            fornecedorId={oferta.fornecedor_id}
             fornecedor={oferta.fornecedor_nome}
             quantidade={qtd}
           />
