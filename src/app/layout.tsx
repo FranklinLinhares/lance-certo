@@ -48,6 +48,10 @@ async function Menu() {
   const { data: empresa } = user
     ? await supabase.from("empresas").select("id, papel, nome").eq("id", user.id).maybeSingle()
     : { data: null };
+  // Pedidos da vitrine esperando a resposta desta conta como vendedora.
+  const { count: aResponder } = empresa
+    ? await supabase.from("reservas").select("id", { count: "exact", head: true }).eq("fornecedor_id", empresa.id).eq("situacao", "aguardando")
+    : { count: 0 };
 
   return (
     <>
@@ -59,7 +63,10 @@ async function Menu() {
             <Link href="/historico" className="hover:text-green-800">Meus preços</Link>
           )}
           <Link href="/ofertas" className="hover:text-green-800">Minhas ofertas</Link>
-          <Link href="/negocios" className="hover:text-green-800">Negócios</Link>
+          <Link href="/negocios" className="hover:text-green-800">
+            Negócios
+            {!!aResponder && <span className="ml-1 rounded-full bg-amber-500 px-1.5 text-xs font-bold text-white">{aResponder}</span>}
+          </Link>
           <Link href="/contatos" className="hover:text-green-800">Contatos</Link>
         </>
       )}
