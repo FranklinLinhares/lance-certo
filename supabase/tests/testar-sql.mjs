@@ -19,6 +19,8 @@ await db.exec(`
 // Como no Supabase: tabelas novas já nascem com acesso para usuários logados,
 // e cada migração pode tirar o que não deve ficar aberto.
 await db.exec(`alter default privileges in schema public grant select, insert, update, delete on tables to authenticated;`);
+// Funções novas também nascem liberadas para anon e authenticated, como no Supabase.
+await db.exec(`alter default privileges in schema public grant execute on functions to anon, authenticated;`);
 const migracoes = new URL("../migrations/", import.meta.url);
 for (const arquivo of readdirSync(migracoes).filter((a) => a.endsWith(".sql")).sort()) {
   await db.exec(readFileSync(new URL(arquivo, migracoes), "utf8"));
@@ -310,6 +312,16 @@ await como(ids.atacado, `insert into ofertas (fornecedor_id, produto, produto_ch
 assert.ok(!(await avisos(ids.restaurante)).some((t) => t.includes("Cebola")), "acima do preço não avisa");
 await como(ids.atacado, `update ofertas set preco_unitario = 3.80 where produto_chave = 'cebola'`);
 assert.ok((await avisos(ids.restaurante)).some((t) => t.includes("Alerta de preço: Cebola a R$ 3,80")), "baixou de preço e avisou");
+
+// Funções internas e chamadas sem login ficam fechadas.
+const pode = async (papel, funcao) =>
+  (await db.query(`select has_function_privilege($1, $2, 'execute') ok`, [papel, funcao])).rows[0].ok;
+assert.equal(await pode("authenticated", "devolver_estoque(reservas)"), false, "devolver_estoque é interna");
+assert.equal(await pode("authenticated", "avisar_lance()"), false, "gatilho não é chamável");
+assert.equal(await pode("anon", "reservar_oferta(uuid, numeric)"), false, "sem login não reserva");
+assert.equal(await pode("anon", "telefones_de_negocio(uuid[])"), false, "sem login não vê telefones");
+assert.equal(await pode("authenticated", "reservar_oferta(uuid, numeric)"), true, "logado reserva");
+await falha(ids.restaurante, `select devolver_estoque(r) from reservas r limit 1`, [], /permission denied/);
 
 // Ocultar tira o item só da lista de quem ocultou.
 await como(ids.restaurante, `insert into ocultos (tipo, item) values ('oferta', 'x1'), ('historico', 'cebola|kg')`);
