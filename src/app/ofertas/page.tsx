@@ -4,6 +4,7 @@ import { buscarTelefones } from "@/lib/telefones";
 import { CATEGORIAS, PUBLICO, dataHora, porUnidade, type Categoria, type Publico, type Unidade } from "@/lib/dominio";
 import { encerrarOferta } from "./acoes";
 import { ExcluirOferta } from "./ExcluirOferta";
+import { BORDA_CARTAO, Situacao } from "@/components/Situacao";
 
 type Oferta = {
   id: string;
@@ -30,6 +31,19 @@ export default async function MinhasOfertas() {
     .order("criado_em", { ascending: false })
     .returns<Oferta[]>();
   const ofertas = data ?? [];
+  // Pedidos da vitrine que ainda esperam a sua resposta, por oferta.
+  const { data: dadosPedidos } = await supabase
+    .from("reservas")
+    .select("oferta_id, quantidade")
+    .eq("fornecedor_id", empresa.id)
+    .eq("situacao", "aguardando");
+  const pedidos = new Map<string, { n: number; quantidade: number }>();
+  for (const r of dadosPedidos ?? []) {
+    if (!r.oferta_id) continue;
+    const atual = pedidos.get(r.oferta_id) ?? { n: 0, quantidade: 0 };
+    pedidos.set(r.oferta_id, { n: atual.n + 1, quantidade: atual.quantidade + Number(r.quantidade) });
+  }
+
   const telefones = await buscarTelefones(supabase, ofertas.flatMap((o) => o.compras.map((c) => c.comprador_id)));
 
   // Para cada produto, quantos compradores próximos têm pedido aberto.
@@ -58,8 +72,23 @@ export default async function MinhasOfertas() {
       </div>
       {ofertas.length === 0 && <p className="text-stone-600">Você ainda não publicou ofertas.</p>}
       <ul className="space-y-3">
-        {ofertas.map((o) => (
-          <li key={o.id} className={`cartao space-y-2 ${o.ativa ? "" : "opacity-60"}`}>
+        {ofertas.map((o) => {
+          const pedido = pedidos.get(o.id);
+          const vendido = o.compras.reduce((t, c) => t + Number(c.quantidade), 0);
+          const borda = pedido ? BORDA_CARTAO.pedido : vendido > 0 ? BORDA_CARTAO.aceito : "";
+          return (
+          <li key={o.id} className={`cartao space-y-2 ${borda} ${o.ativa || pedido ? "" : "opacity-60"}`}>
+            {pedido && (
+              <Situacao tom="pedido">
+                {pedido.n === 1 ? "1 pedido de compra" : `${pedido.n} pedidos de compra`} esperando sua resposta ({pedido.quantidade} {o.unidade})
+                <Link href="/negocios" className="botao ml-auto py-1 text-sm">Responder</Link>
+              </Situacao>
+            )}
+            {vendido > 0 && (
+              <Situacao tom="aceito">
+                Compra aceita: {vendido} {o.unidade} vendido{vendido > 1 ? "s" : ""} para {o.compras.length === 1 ? o.compras[0].comprador?.nome : `${o.compras.length} compradores`}
+              </Situacao>
+            )}
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <div>
                 <div className="font-semibold">{o.produto}</div>
@@ -78,7 +107,7 @@ export default async function MinhasOfertas() {
             )}
             {o.compras.length > 0 && (
               <div className="text-sm">
-                <div className="font-medium">Compras pela vitrine:</div>
+                <div className="font-medium">Compras aceitas:</div>
                 <ul className="list-disc pl-5">
                   {o.compras.map((c, n) => (
                     <li key={n}>{c.comprador?.nome} · {c.quantidade} {o.unidade} · WhatsApp {telefones.get(c.comprador_id) ?? "–"}</li>
@@ -99,7 +128,8 @@ export default async function MinhasOfertas() {
               <ExcluirOferta id={o.id} />
             </div>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </div>
   );

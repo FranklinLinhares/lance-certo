@@ -4,6 +4,7 @@ import { dataHora, porUnidade, reais, type Unidade } from "@/lib/dominio";
 import { buscarTelefones } from "@/lib/telefones";
 import { ConclusaoNegocio } from "@/components/ConclusaoNegocio";
 import { cancelarReserva, responderReserva } from "./acoes";
+import { BORDA_CARTAO, Situacao, type TomSituacao } from "@/components/Situacao";
 
 type Negocio = {
   id: string;
@@ -35,7 +36,11 @@ function haSeteDias() {
   return new Date(Date.now() - 7 * 86_400_000).toISOString();
 }
 
-const RESPOSTA = { recusada: "O vendedor recusou", cancelada: "Você desistiu" } as const;
+const RESPOSTA: Record<"aguardando" | "recusada" | "cancelada", { tom: TomSituacao; texto: string }> = {
+  aguardando: { tom: "pedido", texto: "Pedido enviado, aguardando o vendedor aceitar" },
+  recusada: { tom: "recusado", texto: "O vendedor recusou" },
+  cancelada: { tom: "cancelado", texto: "Você desistiu" },
+};
 
 // Compras e vendas feitas no app, com a avaliação da outra parte.
 export default async function Negocios() {
@@ -79,7 +84,8 @@ export default async function Negocios() {
           <h2 className="text-lg font-semibold">Pedidos para você responder</h2>
           <ul className="space-y-3">
             {paraResponder.map((r) => (
-              <li key={r.id} className="cartao space-y-2 border-amber-400 bg-amber-50">
+              <li key={r.id} className={`cartao space-y-2 ${BORDA_CARTAO.pedido}`}>
+                <Situacao tom="pedido">Pedido de compra esperando sua resposta</Situacao>
                 <div>
                   <Link href={`/perfil/${r.comprador?.id}`} className="font-medium text-green-800 underline">{r.comprador?.nome}</Link> quer comprar{" "}
                   <strong>{r.quantidade} {r.unidade} de {r.produto}</strong> a {porUnidade(r.preco_unitario, r.unidade)}.
@@ -101,12 +107,12 @@ export default async function Negocios() {
           <h2 className="text-lg font-semibold">Seus pedidos na vitrine</h2>
           <ul className="space-y-3">
             {meusPedidos.map((r) => (
-              <li key={r.id} className="cartao flex flex-wrap items-center justify-between gap-2">
+              <li key={r.id} className={`cartao space-y-2 ${BORDA_CARTAO[RESPOSTA[r.situacao as keyof typeof RESPOSTA].tom]}`}>
+                <Situacao tom={RESPOSTA[r.situacao as keyof typeof RESPOSTA].tom}>{RESPOSTA[r.situacao as keyof typeof RESPOSTA].texto}</Situacao>
+                <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <span className="font-medium">{r.quantidade} {r.unidade} de {r.produto}</span> com {r.fornecedor?.nome}
-                  <div className="text-sm text-stone-500">
-                    {r.situacao === "aguardando" ? "Aguardando o vendedor aceitar" : RESPOSTA[r.situacao as keyof typeof RESPOSTA]} · {dataHora(r.criado_em)}
-                  </div>
+                  <div className="text-sm text-stone-500">{dataHora(r.criado_em)}</div>
                 </div>
                 {r.situacao === "aguardando" && (
                   <form action={cancelarReserva}>
@@ -114,6 +120,7 @@ export default async function Negocios() {
                     <button className="botao-secundario py-1 text-sm">Desistir</button>
                   </form>
                 )}
+                </div>
               </li>
             ))}
           </ul>
@@ -127,11 +134,12 @@ export default async function Negocios() {
           const nota = notaDada.get(n.id);
           return (
             <li key={n.id} className="cartao space-y-2">
+              <Situacao tom="aceito">
+                {vendi ? "Venda fechada" : "Compra aceita"}
+                {n.concluido_comprador_em && n.concluido_fornecedor_em && <span className="font-normal">· negócio concluído</span>}
+              </Situacao>
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <div>
-                  <span className={`mr-2 rounded-full px-2 py-0.5 text-xs ${vendi ? "bg-sky-100 text-sky-900" : "bg-green-100 text-green-900"}`}>
-                    {vendi ? "Venda" : "Compra"}
-                  </span>
                   <span className="font-semibold">{n.produto}</span>
                   <div className="text-sm text-stone-500">
                     {n.quantidade} {n.unidade} a {porUnidade(n.preco_unitario, n.unidade)} · {n.origem === "leilao" ? "leilão" : "vitrine"} · {dataHora(n.criado_em)}
