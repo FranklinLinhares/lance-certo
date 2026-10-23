@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 const TONS = {
   pedido: { cor: "border-amber-500 bg-amber-100 text-amber-950", icone: "⏳" },
   aceito: { cor: "border-green-600 bg-green-100 text-green-950", icone: "✅" },
+  lance: { cor: "border-sky-600 bg-sky-100 text-sky-950", icone: "🔔" },
   recusado: { cor: "border-red-500 bg-red-50 text-red-900", icone: "✖" },
   cancelado: { cor: "border-stone-400 bg-stone-100 text-stone-700", icone: "↩" },
 };
@@ -24,6 +25,7 @@ export function Situacao({ tom, children }: { tom: TomSituacao; children: ReactN
 export const BORDA_CARTAO: Record<TomSituacao, string> = {
   pedido: "border-2 border-amber-500",
   aceito: "border-2 border-green-600",
+  lance: "border-2 border-sky-600",
   recusado: "",
   cancelado: "",
 };
