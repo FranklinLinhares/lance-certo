@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { exigirEmpresa } from "@/lib/sessao";
+import { idsMarcados } from "@/lib/ocultos";
 import { CATEGORIAS, PUBLICO, UNIDADES, chaveDoProduto } from "@/lib/dominio";
 import { lerConvidados } from "@/lib/contatos";
 
@@ -152,4 +153,15 @@ export async function publicarFolheto(dados: { itens: ItemFolheto[]; validaAte: 
   revalidatePath("/ofertas");
   revalidatePath("/vitrine");
   redirect("/ofertas");
+}
+
+// Exclui de vez as ofertas marcadas; compras já feitas ficam no histórico.
+export async function excluirOfertas(form: FormData) {
+  const { supabase, empresa } = await exigirEmpresa();
+  const ids = idsMarcados(form);
+  if (ids.length === 0) return;
+  const { error } = await supabase.from("ofertas").delete().in("id", ids).eq("fornecedor_id", empresa.id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/ofertas");
+  revalidatePath("/vitrine");
 }

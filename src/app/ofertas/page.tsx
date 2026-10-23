@@ -2,7 +2,8 @@ import Link from "next/link";
 import { exigirEmpresa } from "@/lib/sessao";
 import { buscarTelefones } from "@/lib/telefones";
 import { CATEGORIAS, PUBLICO, dataHora, porUnidade, type Categoria, type Publico, type Unidade } from "@/lib/dominio";
-import { encerrarOferta } from "./acoes";
+import { encerrarOferta, excluirOfertas } from "./acoes";
+import { BarraSelecao, Marcar } from "@/components/Selecao";
 import { ExcluirOferta } from "./ExcluirOferta";
 import { BORDA_CARTAO, Situacao } from "@/components/Situacao";
 
@@ -71,6 +72,7 @@ export default async function MinhasOfertas() {
         )}
       </div>
       {ofertas.length === 0 && <p className="text-stone-600">Você ainda não publicou ofertas.</p>}
+      <BarraSelecao id="excluir-ofertas" acao={excluirOfertas} confirmar="Excluir {n} oferta(s)? Elas saem da vitrine e não dá para desfazer. As compras já feitas continuam em Negócios." />
       <ul className="space-y-3">
         {ofertas.map((o) => {
           const pedido = pedidos.get(o.id);
@@ -90,11 +92,14 @@ export default async function MinhasOfertas() {
               </Situacao>
             )}
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <div>
+              <div className="flex items-start gap-3">
+                <Marcar form="excluir-ofertas" valor={o.id} nome={o.produto} />
+                <div>
                 <div className="font-semibold">{o.produto}</div>
                 <div className="text-sm text-stone-500">
                   {CATEGORIAS[o.categoria]} · {o.quantidade_disponivel} {o.unidade} · válida até {dataHora(o.valida_ate)}
                   {o.convidados ? <> · Só para {o.convidados.length} cliente{o.convidados.length > 1 ? "s" : ""} escolhido{o.convidados.length > 1 ? "s" : ""}</> : o.vende_para !== "todos" && <> · {PUBLICO[o.vende_para]}</>}
+                </div>
                 </div>
               </div>
               <div className="text-lg font-bold text-green-800">{porUnidade(o.preco_unitario, o.unidade)}</div>

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { exigirEmpresa } from "@/lib/sessao";
+import { idsMarcados, ocultar } from "@/lib/ocultos";
 import { CATEGORIAS, type Categoria } from "@/lib/dominio";
 
 export type EstadoCompra = { erro?: string; ok?: string };
@@ -28,5 +29,12 @@ export async function salvarCategorias(form: FormData) {
     .map(String)
     .filter((c): c is Categoria => c in CATEGORIAS);
   await supabase.from("empresas").update({ categorias }).eq("id", empresa.id);
+  revalidatePath("/vitrine");
+}
+
+// Tira da sua vitrine as ofertas marcadas; para os outros elas continuam.
+export async function ocultarOfertas(form: FormData) {
+  const { supabase } = await exigirEmpresa();
+  await ocultar(supabase, "oferta", idsMarcados(form));
   revalidatePath("/vitrine");
 }

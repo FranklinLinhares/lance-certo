@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { exigirEmpresa } from "@/lib/sessao";
+import { idsMarcados, ocultar } from "@/lib/ocultos";
 import { CATEGORIAS, UNIDADES, chaveDoProduto } from "@/lib/dominio";
 
 export type EstadoHistorico = { erro?: string; ok?: boolean };
@@ -32,4 +33,11 @@ export async function registrarCompraExterna(_: EstadoHistorico, form: FormData)
   if (error) return { erro: error.message };
   revalidatePath("/historico");
   return { ok: true };
+}
+
+// Tira produtos de Meus preços (cada id é "produto_chave|unidade").
+export async function ocultarHistorico(form: FormData) {
+  const { supabase } = await exigirEmpresa();
+  await ocultar(supabase, "historico", idsMarcados(form));
+  revalidatePath("/historico");
 }
