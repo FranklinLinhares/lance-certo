@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { EXIGIR_DOCUMENTO, cnpjValido, cpfValido, documentoDeTeste, soDigitos } from "@/lib/documentos";
-import { CATEGORIAS, type Categoria } from "@/lib/dominio";
 
 export type EstadoCadastro = { erro?: string };
 
@@ -49,11 +48,6 @@ export async function salvarEmpresa(_: EstadoCadastro, form: FormData): Promise<
     ({ lat, lng } = ponto);
   }
 
-  const categorias = form
-    .getAll("categorias")
-    .map(String)
-    .filter((c): c is Categoria => c in CATEGORIAS);
-
   const dados = {
     papel,
     tipo_documento: tipoDocumento,
@@ -69,7 +63,6 @@ export async function salvarEmpresa(_: EstadoCadastro, form: FormData): Promise<
     lat,
     lng,
     raio_km: Math.min(500, Math.max(1, Number(form.get("raio_km")) || 30)),
-    categorias,
   };
   // Sem upsert: ele precisaria ler colunas que as outras contas não podem ver.
   const { error } = atual

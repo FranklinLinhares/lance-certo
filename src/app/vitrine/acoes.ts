@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { exigirEmpresa } from "@/lib/sessao";
+import { CATEGORIAS, type Categoria } from "@/lib/dominio";
 
 export type EstadoCompra = { erro?: string; ok?: string };
 
@@ -17,4 +18,15 @@ export async function comprarOferta(_: EstadoCompra, form: FormData): Promise<Es
   revalidatePath("/vitrine");
   revalidatePath("/negocios");
   return { ok: "Pedido enviado ao vendedor. A quantidade fica reservada até ele responder." };
+}
+
+// Categorias de interesse: abrem primeiro na vitrine e, no modo Vender, avisam de leilões novos.
+export async function salvarCategorias(form: FormData) {
+  const { supabase, empresa } = await exigirEmpresa();
+  const categorias = form
+    .getAll("categorias")
+    .map(String)
+    .filter((c): c is Categoria => c in CATEGORIAS);
+  await supabase.from("empresas").update({ categorias }).eq("id", empresa.id);
+  revalidatePath("/vitrine");
 }

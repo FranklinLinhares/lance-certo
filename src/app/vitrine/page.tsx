@@ -6,6 +6,7 @@ import { mediaDasOfertas } from "@/lib/escudo";
 import { Estrelas } from "@/components/Estrelas";
 import { buscarReputacao } from "@/lib/reputacao";
 import { Situacao } from "@/components/Situacao";
+import { MinhasCategorias } from "./MinhasCategorias";
 
 type Oferta = {
   id: string;
@@ -62,6 +63,19 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
     grupos.set(chave, [...(grupos.get(chave) ?? []), o]);
   }
 
+  // Uma caixa por categoria; as de interesse vêm primeiro e já abertas.
+  const porCategoria = new Map<Categoria, Oferta[][]>();
+  for (const lista of grupos.values()) {
+    const cat = lista[0].categoria;
+    porCategoria.set(cat, [...(porCategoria.get(cat) ?? []), lista]);
+  }
+  const interesses = new Set(empresa.categorias);
+  const ordem = (Object.keys(CATEGORIAS) as Categoria[])
+    .filter((c) => porCategoria.has(c))
+    .sort((a, b) => Number(interesses.has(b)) - Number(interesses.has(a)));
+  // Na busca, ou com uma categoria só, abre tudo.
+  const abrirTodas = Boolean(termo) || ordem.length === 1;
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -91,6 +105,8 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
         </p>
       )}
 
+      <MinhasCategorias marcadas={empresa.categorias} />
+
       {grupos.size === 0 && (
         <div className="cartao space-y-2">
           <p>Nenhuma oferta encontrada{termo ? ` para “${termo}”` : ""} perto de você.</p>
@@ -102,13 +118,29 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
         </div>
       )}
 
-      {[...grupos.values()].map((lista) => {
+      {ordem.map((cat) => {
+        const listas = porCategoria.get(cat)!;
+        const nOfertas = listas.reduce((t, l) => t + l.length, 0);
+        return (
+          <details key={cat} open={abrirTodas || interesses.has(cat)} className="cartao group space-y-3 p-0">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-xl px-4 py-3 hover:bg-stone-50">
+              <span className="text-lg font-bold">
+                <span className="mr-2 inline-block transition-transform group-open:rotate-90" aria-hidden>▸</span>
+                {CATEGORIAS[cat]}
+                {interesses.has(cat) && <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-900">Seu interesse</span>}
+              </span>
+              <span className="text-sm text-stone-500">
+                {listas.length} produto{listas.length > 1 ? "s" : ""} · {nOfertas} oferta{nOfertas > 1 ? "s" : ""}
+              </span>
+            </summary>
+            <div className="space-y-3 px-4 pb-4">
+      {listas.map((lista) => {
         const precos = lista.map((o) => Number(o.preco_unitario));
         const u = lista[0].unidade;
         const media = precos.reduce((a, b) => a + b, 0) / precos.length;
         const mercado = mediaDasOfertas(precos);
         return (
-          <section key={`${lista[0].produto_chave}|${u}`} className="cartao space-y-3">
+          <section key={`${lista[0].produto_chave}|${u}`} className="space-y-3 rounded-lg border border-stone-200 p-3">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-lg font-semibold">{lista[0].produto}</h2>
               <span className="text-sm text-stone-500">{CATEGORIAS[lista[0].categoria]}</span>
@@ -168,6 +200,10 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
               ))}
             </ul>
           </section>
+        );
+      })}
+            </div>
+          </details>
         );
       })}
     </div>

@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { salvarEmpresa, type EstadoCadastro } from "./acoes";
-import { CATEGORIAS, type Empresa } from "@/lib/dominio";
+import type { Empresa } from "@/lib/dominio";
 import { EXIGIR_DOCUMENTO } from "@/lib/documentos";
 
 function Escolha<T extends string>({ nome, opcoes, valor, aoMudar }: { nome: string; opcoes: [T, string][]; valor: T; aoMudar: (v: T) => void }) {
@@ -117,18 +117,6 @@ export function FormularioEmpresa({ empresa, email }: { empresa: Empresa | null;
         <label className="rotulo" htmlFor="raio_km">Comprar e entregar até quantos km?</label>
         <input id="raio_km" name="raio_km" type="number" min={1} max={500} defaultValue={empresa?.raio_km ?? 30} className="campo" />
       </div>
-
-      <fieldset>
-        <legend className="rotulo">Categorias de interesse</legend>
-        <div className="flex flex-wrap gap-2">
-          {Object.entries(CATEGORIAS).map(([valor, nome]) => (
-            <label key={valor} className="flex items-center gap-1.5 rounded-full border border-stone-300 px-3 py-1 text-sm">
-              <input type="checkbox" name="categorias" value={valor} defaultChecked={empresa?.categorias.includes(valor as never)} />
-              {nome}
-            </label>
-          ))}
-        </div>
-      </fieldset>
 
       <p className="text-sm text-stone-500">Com a mesma conta você compra e vende. Troque entre Comprar e Vender no menu, quando quiser.</p>
 
