@@ -7,6 +7,9 @@ import { Estrelas } from "@/components/Estrelas";
 import { buscarReputacao } from "@/lib/reputacao";
 import { Situacao } from "@/components/Situacao";
 import { MinhasCategorias } from "./MinhasCategorias";
+import { ocultarOfertas } from "./acoes";
+import { BarraSelecao, Marcar } from "@/components/Selecao";
+import { buscarOcultos } from "@/lib/ocultos";
 
 type Oferta = {
   id: string;
@@ -37,8 +40,9 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
 
   const { data } = await supabase.rpc("vitrine_ofertas", { termo: termo || null });
   // As próprias ofertas ficam em Minhas ofertas; a vitrine mostra só as de outras pessoas.
+  const ocultas = await buscarOcultos(supabase, "oferta");
   const ofertas = ((data ?? []) as Oferta[]).filter(
-    (o) => o.fornecedor_id !== empresa.id && (origem === "todos" || o.fornecedor_pj === (origem === "pj")),
+    (o) => o.fornecedor_id !== empresa.id && !ocultas.has(o.id) && (origem === "todos" || o.fornecedor_pj === (origem === "pj")),
   );
   const reputacao = await buscarReputacao(supabase, ofertas.map((o) => o.fornecedor_id));
 
@@ -107,6 +111,8 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
 
       <MinhasCategorias marcadas={empresa.categorias} />
 
+      <BarraSelecao id="ocultar-ofertas" acao={ocultarOfertas} confirmar="Tirar {n} oferta(s) da sua vitrine? Elas somem só para você; o vendedor continua anunciando." />
+
       {grupos.size === 0 && (
         <div className="cartao space-y-2">
           <p>Nenhuma oferta encontrada{termo ? ` para “${termo}”` : ""} perto de você.</p>
@@ -167,6 +173,8 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
                     </Situacao>
                   ) : null}
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <div className="flex items-start gap-3">
+                    <Marcar form="ocultar-ofertas" valor={o.id} nome={`${o.produto} de ${o.fornecedor_nome}`} />
                     <div>
                       <Link href={`/perfil/${o.fornecedor_id}`} className="font-medium hover:underline">{o.fornecedor_nome}</Link>
                       <span className="ml-2"><Estrelas nota={reputacao.get(o.fornecedor_id)?.nota_vendedor} total={reputacao.get(o.fornecedor_id)?.avaliacoes_vendedor} /></span>
@@ -179,6 +187,7 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
                         {o.disponivel_a_partir && <> · a partir de {new Date(o.disponivel_a_partir).toLocaleDateString("pt-BR")}</>}
                       </div>
                       {o.descricao && <div className="text-sm">{o.descricao}</div>}
+                    </div>
                     </div>
                     <div className="text-right">
                       <div className="font-bold text-green-800">{porUnidade(o.preco_unitario, u)}</div>

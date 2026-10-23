@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { exigirEmpresa } from "@/lib/sessao";
+import { idsMarcados, ocultar } from "@/lib/ocultos";
 
 export type EstadoAvaliacao = { erro?: string; ok?: boolean };
 
@@ -41,5 +42,19 @@ export async function cancelarReserva(form: FormData) {
   const { supabase } = await exigirEmpresa();
   const { error } = await supabase.rpc("cancelar_reserva", { p_reserva: String(form.get("reserva")) });
   if (error) throw new Error(error.message);
+  revalidatePath("/", "layout");
+}
+
+// Tira negócios e pedidos da vitrine da sua lista; a outra parte continua vendo.
+// Pedido seu ainda aguardando é cancelado antes, para devolver a quantidade.
+export async function excluirNegocios(form: FormData) {
+  const { supabase } = await exigirEmpresa();
+  const ids = idsMarcados(form);
+  const compras = ids.filter((i) => i.startsWith("c:")).map((i) => i.slice(2));
+  const reservas = ids.filter((i) => i.startsWith("r:")).map((i) => i.slice(2));
+  const { data: aguardando } = await supabase.from("reservas").select("id").in("id", reservas).eq("situacao", "aguardando");
+  for (const r of aguardando ?? []) await supabase.rpc("cancelar_reserva", { p_reserva: r.id });
+  await ocultar(supabase, "compra", compras);
+  await ocultar(supabase, "reserva", reservas);
   revalidatePath("/", "layout");
 }

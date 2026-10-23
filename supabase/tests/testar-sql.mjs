@@ -311,6 +311,14 @@ assert.ok(!(await avisos(ids.restaurante)).some((t) => t.includes("Cebola")), "a
 await como(ids.atacado, `update ofertas set preco_unitario = 3.80 where produto_chave = 'cebola'`);
 assert.ok((await avisos(ids.restaurante)).some((t) => t.includes("Alerta de preço: Cebola a R$ 3,80")), "baixou de preço e avisou");
 
+// Ocultar tira o item só da lista de quem ocultou.
+await como(ids.restaurante, `insert into ocultos (tipo, item) values ('oferta', 'x1'), ('historico', 'cebola|kg')`);
+assert.equal((await como(ids.restaurante, `select * from ocultos`)).rows.length, 2);
+assert.equal((await como(ids.atacado, `select * from ocultos`)).rows.length, 0, "ocultos são privados");
+await falha(ids.atacado, `insert into ocultos (empresa_id, tipo, item) values ($1, 'oferta', 'x2')`, [ids.restaurante], /row-level security/);
+await como(ids.restaurante, `delete from ocultos where tipo = 'oferta'`);
+assert.equal((await como(ids.restaurante, `select * from ocultos`)).rows.length, 1);
+
 // Dá para apagar um fornecedor que venceu um leilão; o pedido fica sem vencedor.
 const pedidoGanho = (await db.query(`select id from pedidos where lance_vencedor_id is not null limit 1`)).rows[0].id;
 const vencedorDoPedido = (await db.query(`select l.fornecedor_id f from pedidos p join lances l on l.id = p.lance_vencedor_id where p.id = $1`, [pedidoGanho])).rows[0].f;

@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { exigirEmpresa } from "@/lib/sessao";
+import { idsMarcados, ocultar } from "@/lib/ocultos";
 import { CATEGORIAS, UNIDADES, chaveDoProduto } from "@/lib/dominio";
 import { lerConvidados } from "@/lib/contatos";
 
@@ -83,4 +84,15 @@ export async function cancelarPedido(form: FormData) {
   const pedido = String(form.get("pedido"));
   await supabase.from("pedidos").update({ status: "cancelado" }).eq("id", pedido).eq("comprador_id", empresa.id).eq("status", "aberto");
   revalidatePath(`/pedidos/${pedido}`);
+}
+
+// Tira os leilões marcados da sua lista. Um leilão seu ainda aberto é cancelado
+// antes, para os fornecedores pararem de dar lance.
+export async function excluirLeiloes(form: FormData) {
+  const { supabase, empresa } = await exigirEmpresa();
+  const ids = idsMarcados(form);
+  if (ids.length === 0) return;
+  await supabase.from("pedidos").update({ status: "cancelado" }).in("id", ids).eq("comprador_id", empresa.id).eq("status", "aberto");
+  await ocultar(supabase, "pedido", ids);
+  revalidatePath("/pedidos");
 }

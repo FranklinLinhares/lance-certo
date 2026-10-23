@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { exigirEmpresa } from "@/lib/sessao";
 import { CATEGORIAS, dataHora, porUnidade, type Categoria, type Unidade } from "@/lib/dominio";
+import { BarraSelecao, Marcar } from "@/components/Selecao";
+import { buscarOcultos } from "@/lib/ocultos";
+import { excluirLeiloes } from "./acoes";
 
 type Linha = {
   id: string;
@@ -41,6 +44,10 @@ export default async function Pedidos() {
     meusLeiloes = (meus ?? []).map((p) => ({ ...p, total_lances: (p.lances as { count: number }[])[0]?.count ?? 0 })) as Linha[];
   }
 
+  const ocultos = await buscarOcultos(supabase, "pedido");
+  paraLance = paraLance.filter((p) => !ocultos.has(p.id));
+  meusLeiloes = meusLeiloes.filter((p) => !ocultos.has(p.id));
+
   return (
     <div className="space-y-6">
       <section className="space-y-3">
@@ -52,12 +59,14 @@ export default async function Pedidos() {
           <>
             <p className="text-sm text-stone-500">Pedidos abertos de compradores dentro do seu raio de entrega de {empresa.raio_km} km. Toque em um para dar lance.</p>
             {paraLance.length === 0 && <p className="text-stone-600">Nenhum leilão aberto perto de você agora.</p>}
+            <BarraSelecao id="excluir-leiloes" acao={excluirLeiloes} confirmar="Tirar {n} leilão(ões) da sua lista? Eles somem só para você." />
             <ListaLeiloes pedidos={paraLance} vendendo />
           </>
         ) : (
           <>
             <p className="text-sm text-stone-500">Crie um leilão e os fornecedores próximos disputam pelo menor preço. Para dar lances em leilões de outras pessoas, mude para Vender no menu.</p>
             {meusLeiloes.length === 0 && <p className="text-stone-600">Você ainda não criou leilões.</p>}
+            <BarraSelecao id="excluir-leiloes" acao={excluirLeiloes} confirmar="Excluir {n} leilão(ões)? Os que ainda estão abertos são cancelados e os fornecedores não podem mais dar lance." />
             <ListaLeiloes pedidos={meusLeiloes} vendendo={false} />
           </>
         )}
@@ -76,8 +85,9 @@ function ListaLeiloes({ pedidos, vendendo }: { pedidos: Linha[]; vendendo: boole
       {pedidos.map((p) => {
         const encerrado = new Date(p.encerra_em) <= new Date();
         return (
-          <li key={p.id}>
-            <Link href={`/pedidos/${p.id}`} className="cartao block hover:border-green-700">
+          <li key={p.id} className="flex items-start gap-3">
+            <span className="pt-4"><Marcar form="excluir-leiloes" valor={p.id} nome={p.produto} /></span>
+            <Link href={`/pedidos/${p.id}`} className="cartao block flex-1 hover:border-green-700">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <div>
                   <div className="font-semibold">{p.produto} · {p.quantidade} {p.unidade}</div>

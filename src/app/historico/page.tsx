@@ -2,6 +2,9 @@ import { redirect } from "next/navigation";
 import { exigirEmpresa } from "@/lib/sessao";
 import { porUnidade, type Unidade } from "@/lib/dominio";
 import { FormularioCompra } from "./FormularioCompra";
+import { ocultarHistorico } from "./acoes";
+import { BarraSelecao, Marcar } from "@/components/Selecao";
+import { buscarOcultos } from "@/lib/ocultos";
 
 type Semana = {
   produto_chave: string;
@@ -29,9 +32,11 @@ export default async function Historico() {
     .gte("semana", dozeSemanasAtras())
     .order("semana", { ascending: false });
 
+  const ocultos = await buscarOcultos(supabase, "historico");
   const porProduto = new Map<string, Semana[]>();
   for (const s of (data ?? []) as Semana[]) {
     const chave = `${s.produto_chave}|${s.unidade}`;
+    if (ocultos.has(chave)) continue;
     porProduto.set(chave, [...(porProduto.get(chave) ?? []), s]);
   }
 
@@ -41,6 +46,7 @@ export default async function Historico() {
       <p className="text-stone-600">Preço médio pago por semana nas últimas 12 semanas, com a variação em relação à semana anterior.</p>
       <FormularioCompra />
       {porProduto.size === 0 && <p className="text-stone-600">Suas compras aparecerão aqui.</p>}
+      <BarraSelecao id="ocultar-historico" acao={ocultarHistorico} confirmar="Tirar {n} produto(s) de Meus preços? Eles somem só desta tela." />
       <div className="grid gap-3 sm:grid-cols-2">
         {[...porProduto.values()].map((semanas) => {
           const atual = semanas[0];
@@ -48,7 +54,10 @@ export default async function Historico() {
           return (
             <section key={`${atual.produto_chave}|${atual.unidade}`} className="cartao space-y-2">
               <div className="flex items-baseline justify-between gap-2">
-                <h2 className="font-semibold">{atual.produto}</h2>
+                <h2 className="flex items-start gap-2 font-semibold">
+                  <Marcar form="ocultar-historico" valor={`${atual.produto_chave}|${atual.unidade}`} nome={atual.produto} />
+                  {atual.produto}
+                </h2>
                 <Variacao valor={atual.variacao_pct} />
               </div>
               <ul className="space-y-1 text-sm">

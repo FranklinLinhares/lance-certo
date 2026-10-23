@@ -3,7 +3,9 @@ import { exigirEmpresa } from "@/lib/sessao";
 import { dataHora, porUnidade, reais, type Unidade } from "@/lib/dominio";
 import { buscarTelefones } from "@/lib/telefones";
 import { ConclusaoNegocio } from "@/components/ConclusaoNegocio";
-import { cancelarReserva, responderReserva } from "./acoes";
+import { cancelarReserva, excluirNegocios, responderReserva } from "./acoes";
+import { BarraSelecao, Marcar } from "@/components/Selecao";
+import { buscarOcultos } from "@/lib/ocultos";
 import { BORDA_CARTAO, Situacao, type TomSituacao } from "@/components/Situacao";
 
 type Negocio = {
@@ -55,7 +57,8 @@ export default async function Negocios() {
     .or(`comprador_id.eq.${empresa.id},fornecedor_id.eq.${empresa.id}`)
     .order("criado_em", { ascending: false })
     .limit(50);
-  const negocios = (data ?? []) as unknown as Negocio[];
+  const comprasOcultas = await buscarOcultos(supabase, "compra");
+  const negocios = ((data ?? []) as unknown as Negocio[]).filter((n) => !comprasOcultas.has(n.id));
   const telefones = await buscarTelefones(supabase, negocios.flatMap((n) => [n.comprador?.id, n.fornecedor?.id]));
 
   // Pedidos da vitrine esperando o vendedor, e os recusados ou desistidos da última semana.
@@ -68,7 +71,8 @@ export default async function Negocios() {
     .neq("situacao", "aceita")
     .order("criado_em", { ascending: false })
     .returns<Reserva[]>();
-  const reservas = dadosReservas ?? [];
+  const reservasOcultas = await buscarOcultos(supabase, "reserva");
+  const reservas = (dadosReservas ?? []).filter((r) => !reservasOcultas.has(r.id));
   const paraResponder = reservas.filter((r) => r.situacao === "aguardando" && r.fornecedor?.id === empresa.id);
   const meusPedidos = reservas.filter((r) => r.comprador?.id === empresa.id);
 
@@ -79,6 +83,7 @@ export default async function Negocios() {
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Meus negócios</h1>
       <p className="text-stone-600">Quando o negócio terminar, confirme aqui. Depois que você e a outra parte confirmarem, cada um avalia o outro, e as notas aparecem no perfil.</p>
+      <BarraSelecao id="excluir-negocios" acao={excluirNegocios} confirmar="Tirar {n} item(ns) da sua lista de negócios? Eles somem só para você; a outra parte e as avaliações continuam. Pedido seu ainda aguardando é cancelado." />
       {paraResponder.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-lg font-semibold">Pedidos para você responder</h2>
@@ -110,9 +115,12 @@ export default async function Negocios() {
               <li key={r.id} className={`cartao space-y-2 ${BORDA_CARTAO[RESPOSTA[r.situacao as keyof typeof RESPOSTA].tom]}`}>
                 <Situacao tom={RESPOSTA[r.situacao as keyof typeof RESPOSTA].tom}>{RESPOSTA[r.situacao as keyof typeof RESPOSTA].texto}</Situacao>
                 <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-start gap-3">
+                <Marcar form="excluir-negocios" valor={`r:${r.id}`} nome={r.produto} />
                 <div>
                   <span className="font-medium">{r.quantidade} {r.unidade} de {r.produto}</span> com {r.fornecedor?.nome}
                   <div className="text-sm text-stone-500">{dataHora(r.criado_em)}</div>
+                </div>
                 </div>
                 {r.situacao === "aguardando" && (
                   <form action={cancelarReserva}>
@@ -139,11 +147,14 @@ export default async function Negocios() {
                 {n.concluido_comprador_em && n.concluido_fornecedor_em && <span className="font-normal">· negócio concluído</span>}
               </Situacao>
               <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <div className="flex items-start gap-3">
+                <Marcar form="excluir-negocios" valor={`c:${n.id}`} nome={n.produto} />
                 <div>
                   <span className="font-semibold">{n.produto}</span>
                   <div className="text-sm text-stone-500">
                     {n.quantidade} {n.unidade} a {porUnidade(n.preco_unitario, n.unidade)} · {n.origem === "leilao" ? "leilão" : "vitrine"} · {dataHora(n.criado_em)}
                   </div>
+                </div>
                 </div>
                 {outro && (
                   <div className="text-right text-sm">
