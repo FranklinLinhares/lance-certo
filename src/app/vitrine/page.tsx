@@ -5,6 +5,7 @@ import { SeloPreco } from "@/components/SeloPreco";
 import { mediaDasOfertas } from "@/lib/escudo";
 import { Estrelas } from "@/components/Estrelas";
 import { buscarReputacao } from "@/lib/reputacao";
+import { Situacao } from "@/components/Situacao";
 
 type Oferta = {
   id: string;
@@ -39,6 +40,20 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
     (o) => o.fornecedor_id !== empresa.id && (origem === "todos" || o.fornecedor_pj === (origem === "pj")),
   );
   const reputacao = await buscarReputacao(supabase, ofertas.map((o) => o.fornecedor_id));
+
+  // Ofertas em que você já fez pedido: aguardando o vendedor ou já aceito.
+  const { data: dadosPedidos } = await supabase
+    .from("reservas")
+    .select("oferta_id, quantidade, situacao")
+    .eq("comprador_id", empresa.id)
+    .in("situacao", ["aguardando", "aceita"]);
+  const meusPedidos = new Map<string, { aguardando: number; aceita: number }>();
+  for (const r of dadosPedidos ?? []) {
+    if (!r.oferta_id) continue;
+    const atual = meusPedidos.get(r.oferta_id) ?? { aguardando: 0, aceita: 0 };
+    atual[r.situacao as "aguardando" | "aceita"] += Number(r.quantidade);
+    meusPedidos.set(r.oferta_id, atual);
+  }
 
   // Agrupa as ofertas do mesmo produto e unidade para comparar preços.
   const grupos = new Map<string, Oferta[]>();
@@ -107,6 +122,18 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
             <ul className="divide-y divide-stone-100">
               {lista.map((o) => (
                 <li key={o.id} className="space-y-1 py-2">
+                  {meusPedidos.get(o.id)?.aguardando ? (
+                    <Situacao tom="pedido">
+                      Você pediu {meusPedidos.get(o.id)!.aguardando} {u}, aguardando o vendedor aceitar
+                      <Link href="/negocios" className="ml-auto text-sm underline">Ver em Negócios</Link>
+                    </Situacao>
+                  ) : null}
+                  {meusPedidos.get(o.id)?.aceita ? (
+                    <Situacao tom="aceito">
+                      Compra aceita: {meusPedidos.get(o.id)!.aceita} {u}
+                      <Link href="/negocios" className="ml-auto text-sm underline">Combinar a entrega</Link>
+                    </Situacao>
+                  ) : null}
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <div>
                       <Link href={`/perfil/${o.fornecedor_id}`} className="font-medium hover:underline">{o.fornecedor_nome}</Link>
