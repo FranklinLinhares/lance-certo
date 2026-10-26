@@ -126,6 +126,9 @@ await falha(ids.atacado, `select dar_lance($1, 6.50)`, [aberto], /no máximo/);
 await como(ids.atacado, `select dar_lance($1, 5.80)`, [aberto]);
 await falha(ids.agricultor, `select dar_lance($1, 5.80)`, [aberto], /menor que o menor lance atual/);
 await como(ids.agricultor, `select dar_lance($1, 5.50)`, [aberto]);
+// 5,496 vira 5,50 na coluna: precisa ser recusado em vez de empatar.
+await falha(ids.atacado, `select dar_lance($1, 5.496)`, [aberto], /menor que o menor lance atual/);
+await falha(ids.atacado, `select dar_lance($1, 0.004)`, [aberto], /maior que zero/);
 await falha(ids.longe, `select dar_lance($1, 4.00)`, [aberto], /fora do seu raio/);
 await falha(ids.restaurante, `select dar_lance($1, 4.00)`, [aberto], /Apenas fornecedores/);
 // No leilão aberto o concorrente vê os preços.
@@ -175,6 +178,21 @@ const desistida = (await como(ids.restaurante, `select id from reservar_oferta($
 await como(ids.restaurante, `select cancelar_reserva($1)`, [desistida]);
 assert.equal(Number((await db.query(`select quantidade_disponivel q from ofertas where id = $1`, [ofertaAgricultor])).rows[0].q), 150);
 assert.equal((await db.query(`select count(*) n from compras where oferta_id = $1`, [ofertaAgricultor])).rows[0].n, 1);
+// Quantidade arredondada antes de mexer no estoque: 0,004 não vira reserva.
+await falha(ids.restaurante, `select reservar_oferta($1, 0.004)`, [ofertaAgricultor], /maior que zero/);
+const meio = (await como(ids.restaurante, `select id, quantidade from reservar_oferta($1, 0.005)`, [ofertaAgricultor])).rows[0];
+assert.equal(Number(meio.quantidade), 0.01);
+assert.equal(Number((await db.query(`select quantidade_disponivel q from ofertas where id = $1`, [ofertaAgricultor])).rows[0].q), 149.99);
+await como(ids.restaurante, `select cancelar_reserva($1)`, [meio.id]);
+assert.equal(Number((await db.query(`select quantidade_disponivel q from ofertas where id = $1`, [ofertaAgricultor])).rows[0].q), 150);
+// Oferta encerrada pelo vendedor continua encerrada quando um pedido é recusado.
+const antesDeEncerrar = (await como(ids.restaurante, `select id from reservar_oferta($1, 5)`, [ofertaAgricultor])).rows[0].id;
+await como(ids.agricultor, `update ofertas set ativa = false where id = $1`, [ofertaAgricultor]);
+await como(ids.agricultor, `select responder_reserva($1, false)`, [antesDeEncerrar]);
+const encerrada = (await db.query(`select quantidade_disponivel q, ativa from ofertas where id = $1`, [ofertaAgricultor])).rows[0];
+assert.equal(Number(encerrada.q), 150);
+assert.equal(encerrada.ativa, false, "recusar não republica a oferta encerrada");
+await db.exec(`update ofertas set ativa = true where id = '${ofertaAgricultor}'`);
 
 // Histórico semanal com variação.
 await como(ids.restaurante, `insert into compras (comprador_id, fornecedor_nome, produto, produto_chave, categoria, unidade, quantidade, preco_unitario, origem, data)
@@ -262,6 +280,10 @@ await como(ids.restaurante, `select reservar_oferta($1, 10)`, [pouca]);
 const esgotada = (await db.query(`select quantidade_disponivel q, ativa from ofertas where id = $1`, [pouca])).rows[0];
 assert.equal(Number(esgotada.q), 0);
 assert.equal(esgotada.ativa, false);
+// Desistir do pedido que esgotou a oferta a devolve à vitrine.
+const reservaPouca = (await db.query(`select id from reservas where oferta_id = $1`, [pouca])).rows[0].id;
+await como(ids.restaurante, `select cancelar_reserva($1)`, [reservaPouca]);
+assert.equal((await db.query(`select ativa from ofertas where id = $1`, [pouca])).rows[0].ativa, true);
 
 // Privacidade: documento, telefone e localização não aparecem para outras contas.
 await falha(ids.pessoa, `select documento from empresas where id = $1`, [ids.agricultor], /permission denied/);
@@ -271,6 +293,10 @@ assert.equal((await como(ids.pessoa, `select nome from empresas where id = $1`, 
 assert.equal((await como(ids.pessoa, `select documento from minha_empresa()`)).rows[0].documento, "52998224725");
 // Telefone só de quem já fez negócio: o restaurante comprou do agricultor; a Maria, não.
 assert.equal((await como(ids.restaurante, `select telefone from telefones_de_negocio($1)`, [[ids.agricultor]])).rows[0]?.telefone, "83999990003");
+assert.equal((await como(ids.pessoa, `select telefone from telefones_de_negocio($1)`, [[ids.agricultor]])).rows.length, 0);
+// Compra "externa" não pode apontar outra conta para conseguir o telefone dela.
+await falha(ids.pessoa, `insert into compras (comprador_id, fornecedor_id, produto, produto_chave, categoria, unidade, quantidade, preco_unitario, origem)
+  values ($1, $2, 'x', 'x', 'graos', 'kg', 1, 1, 'externa')`, [ids.pessoa, ids.agricultor], /row-level security/);
 assert.equal((await como(ids.pessoa, `select telefone from telefones_de_negocio($1)`, [[ids.agricultor]])).rows.length, 0);
 // O cadastro continua salvando, como o app faz: update na própria conta.
 await como(ids.pessoa, `update empresas set nome = 'Maria S.', telefone = '83999990006', lat = -7.13 where id = $1`, [ids.pessoa]);
