@@ -3,6 +3,23 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export type TipoContato = "fornecedor" | "cliente";
 export type Contato = { id: string; nome: string; cidade: string; uf: string; pessoa_juridica: boolean };
 
+// Contato cadastrado à mão: alguém que ainda não tem conta no app.
+export type ContatoManual = {
+  id: string; tipo: TipoContato; nome: string; telefone: string | null; email: string | null;
+  documento: string | null; cidade: string | null; uf: string | null; observacao: string | null;
+};
+
+export async function buscarContatosManuais(supabase: SupabaseClient, dono: string, tipo: TipoContato): Promise<ContatoManual[]> {
+  const { data } = await supabase
+    .from("contatos_manuais")
+    .select("id, tipo, nome, telefone, email, documento, cidade, uf, observacao")
+    .eq("dono_id", dono)
+    .eq("tipo", tipo)
+    .order("nome")
+    .returns<ContatoManual[]>();
+  return data ?? [];
+}
+
 // Fornecedores ou clientes que a conta guardou em Meus contatos.
 export async function buscarContatos(supabase: SupabaseClient, dono: string, tipo: TipoContato): Promise<Contato[]> {
   const { data } = await supabase
