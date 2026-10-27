@@ -1,4 +1,4 @@
-// Lê a planilha padrão de ofertas (.xlsx ou .csv) no navegador, sem IA.
+// Lê as planilhas padrão de ofertas e de leilões (.xlsx ou .csv) no navegador, sem IA.
 import { CATEGORIAS, type Categoria, type Unidade } from "@/lib/dominio";
 
 export type ItemPlanilha = {
@@ -44,7 +44,7 @@ function lerCsv(texto: string): string[][] {
   return linhas.map((l) => l.split(separador).map((c) => c.replace(/^"|"$/g, "").trim()));
 }
 
-export async function lerPlanilha(arquivo: File): Promise<ItemPlanilha[]> {
+async function lerLinhas(arquivo: File) {
   let linhas: unknown[][];
   if (/\.csv$/i.test(arquivo.name) || arquivo.type === "text/csv") {
     linhas = lerCsv(await arquivo.text());
@@ -54,6 +54,11 @@ export async function lerPlanilha(arquivo: File): Promise<ItemPlanilha[]> {
   }
   const cabecalho = (linhas[0] ?? []).map(sem);
   const coluna = (...nomes: string[]) => cabecalho.findIndex((c) => nomes.some((n) => c.startsWith(n)));
+  return { linhas, coluna };
+}
+
+export async function lerPlanilha(arquivo: File): Promise<ItemPlanilha[]> {
+  const { linhas, coluna } = await lerLinhas(arquivo);
   const c = {
     produto: coluna("produto"),
     descricao: coluna("marca", "descricao", "embalagem"),
@@ -78,6 +83,59 @@ export async function lerPlanilha(arquivo: File): Promise<ItemPlanilha[]> {
         unidade: unidade ?? "un",
         preco_unitario: numero(l[c.preco]),
         quantidade_disponivel: c.estoque >= 0 ? numero(l[c.estoque]) : "",
+        conferir: !categoria || !unidade,
+      };
+    });
+}
+
+export type ItemLeilao = {
+  produto: string;
+  especificacoes: string;
+  categoria: Categoria;
+  unidade: Unidade;
+  quantidade: string;
+  preco_maximo: string;
+  entrega_ate: string;
+  conferir: boolean;
+};
+
+// Data da célula (Date do Excel) ou "dd/mm/aaaa" vira "aaaa-mm-dd".
+function data(valor: unknown) {
+  if (valor instanceof Date) return valor.toISOString().slice(0, 10);
+  const m = String(valor ?? "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (!m) return "";
+  const ano = m[3].length === 2 ? `20${m[3]}` : m[3];
+  return `${ano}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+}
+
+export async function lerPlanilhaLeiloes(arquivo: File): Promise<ItemLeilao[]> {
+  const { linhas, coluna } = await lerLinhas(arquivo);
+  const c = {
+    produto: coluna("produto"),
+    especificacoes: coluna("especifica", "descricao", "marca"),
+    categoria: coluna("categoria"),
+    unidade: coluna("unidade"),
+    quantidade: coluna("quantidade"),
+    preco: coluna("preco", "valor"),
+    entrega: coluna("entrega", "entregar"),
+  };
+  if (c.produto < 0 || c.quantidade < 0) {
+    throw new Error("A planilha precisa das colunas Produto e Quantidade na primeira linha. Use o modelo.");
+  }
+  return linhas
+    .slice(1)
+    .filter((l) => String(l[c.produto] ?? "").trim())
+    .map((l) => {
+      const categoria = acharCategoria(l[c.categoria]);
+      const unidade = SINONIMOS_UNIDADE[sem(l[c.unidade])];
+      return {
+        produto: String(l[c.produto]).trim(),
+        especificacoes: c.especificacoes >= 0 ? String(l[c.especificacoes] ?? "").trim() : "",
+        categoria: categoria ?? "mercearia",
+        unidade: unidade ?? "un",
+        quantidade: numero(l[c.quantidade]),
+        preco_maximo: c.preco >= 0 ? numero(l[c.preco]) : "",
+        entrega_ate: c.entrega >= 0 ? data(l[c.entrega]) : "",
         conferir: !categoria || !unidade,
       };
     });

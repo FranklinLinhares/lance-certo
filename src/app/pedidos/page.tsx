@@ -79,21 +79,26 @@ export default async function Pedidos() {
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold">{vendendo ? "Leilões perto de você" : "Meus leilões"}</h1>
-          {vendendo ? null : <Link href="/pedidos/novo" className="botao">Novo leilão</Link>}
+          {vendendo ? null : (
+            <div className="flex gap-2">
+              <Link href="/pedidos/planilha" className="botao-secundario">Vários pela planilha</Link>
+              <Link href="/pedidos/novo" className="botao">Novo leilão</Link>
+            </div>
+          )}
         </div>
         {vendendo ? (
           <>
             <p className="text-sm text-stone-500">Pedidos abertos de compradores dentro do seu raio de entrega de {empresa.raio_km} km. Toque em um para dar lance.</p>
             {paraLance.length === 0 && <p className="text-stone-600">Nenhum leilão aberto perto de você agora.</p>}
             <BarraSelecao id="excluir-leiloes" acao={excluirLeiloes} confirmar="Tirar {n} leilão(ões) da sua lista? Eles somem só para você." />
-            <ListaLeiloes pedidos={paraLance} vendendo lances={lances} eu={empresa.id} />
+            <PorCategoria pedidos={paraLance} vendendo lances={lances} eu={empresa.id} />
           </>
         ) : (
           <>
             <p className="text-sm text-stone-500">Crie um leilão e os fornecedores próximos disputam pelo menor preço. Para dar lances em leilões de outras pessoas, mude para Vender no menu.</p>
             {meusLeiloes.length === 0 && <p className="text-stone-600">Você ainda não criou leilões.</p>}
             <BarraSelecao id="excluir-leiloes" acao={excluirLeiloes} confirmar="Excluir {n} leilão(ões)? Os que ainda estão abertos são cancelados e os fornecedores não podem mais dar lance." />
-            <ListaLeiloes pedidos={meusLeiloes} vendendo={false} lances={lances} eu={empresa.id} />
+            <PorCategoria pedidos={meusLeiloes} vendendo={false} lances={lances} eu={empresa.id} />
           </>
         )}
       </section>
@@ -101,6 +106,35 @@ export default async function Pedidos() {
       {vendendo && (
         <p className="text-sm text-stone-500">Seus próprios leilões ficam em Comprar, no menu.</p>
       )}
+    </div>
+  );
+}
+
+// Uma caixa por categoria, como na vitrine. Abre sozinha a caixa que tem
+// leilão pedindo atenção (lance novo, hora de escolher, lance menor que o seu).
+function PorCategoria({ pedidos, vendendo, lances, eu }: { pedidos: Linha[]; vendendo: boolean; lances: Map<string, LanceResumo[]>; eu: string }) {
+  const categorias = (Object.keys(CATEGORIAS) as Categoria[]).filter((c) => pedidos.some((p) => p.categoria === c));
+  return (
+    <div className="space-y-3">
+      {categorias.map((cat) => {
+        const lista = pedidos.filter((p) => p.categoria === cat);
+        const atencao = lista.filter((p) => situacao(p, lances.get(p.id) ?? [], vendendo, eu)).length;
+        return (
+          <details key={cat} open={categorias.length === 1 || atencao > 0} className="cartao group space-y-3 p-0">
+            <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-3 hover:bg-stone-50">
+              <span className="text-lg font-bold">
+                <span className="mr-2 inline-block transition-transform group-open:rotate-90" aria-hidden>▸</span>
+                {CATEGORIAS[cat]}
+                {atencao > 0 && <span className="ml-2 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-900">{atencao} com novidade</span>}
+              </span>
+              <span className="text-sm text-stone-500">{lista.length} leilão(ões)</span>
+            </summary>
+            <div className="px-4 pb-4">
+              <ListaLeiloes pedidos={lista} vendendo={vendendo} lances={lances} eu={eu} />
+            </div>
+          </details>
+        );
+      })}
     </div>
   );
 }

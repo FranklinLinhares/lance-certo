@@ -96,3 +96,48 @@ export async function excluirLeiloes(form: FormData) {
   await ocultar(supabase, "pedido", ids);
   revalidatePath("/pedidos");
 }
+
+export type ItemLeilaoNovo = {
+  produto: string;
+  especificacoes: string;
+  categoria: string;
+  unidade: string;
+  quantidade: number;
+  preco_maximo: number | null;
+  entrega_ate: string;
+};
+
+// Cria de uma vez os leilões da planilha que o comprador revisou.
+export async function criarLeiloes(dados: { itens: ItemLeilaoNovo[]; horas: number; lancesVisiveis: boolean }): Promise<EstadoForm> {
+  const { supabase, empresa } = await exigirEmpresa();
+  if (empresa.papel !== "comprador") return { erro: "Mude para o modo Comprar, no menu, para criar leilões." };
+  if (dados.itens.length === 0) return { erro: "Marque pelo menos um produto." };
+  if (dados.itens.length > 50) return { erro: "Crie no máximo 50 leilões por planilha." };
+  const horas = [2, 6, 24, 72, 168].includes(dados.horas) ? dados.horas : 24;
+
+  const linhas = [];
+  for (const [n, item] of dados.itens.entries()) {
+    const produto = item.produto.trim();
+    if (!produto) return { erro: `Linha ${n + 1}: falta o nome do produto.` };
+    if (!(item.categoria in CATEGORIAS) || !(item.unidade in UNIDADES)) return { erro: `${produto}: escolha a categoria e a unidade.` };
+    if (!(item.quantidade > 0)) return { erro: `${produto}: informe a quantidade.` };
+    if (item.preco_maximo != null && !(item.preco_maximo > 0)) return { erro: `${produto}: o preço máximo precisa ser maior que zero.` };
+    linhas.push({
+      comprador_id: empresa.id,
+      produto,
+      produto_chave: chaveDoProduto(produto),
+      categoria: item.categoria,
+      unidade: item.unidade,
+      quantidade: item.quantidade,
+      especificacoes: item.especificacoes.trim() || null,
+      entrega_ate: /^\d{4}-\d{2}-\d{2}$/.test(item.entrega_ate) ? item.entrega_ate : null,
+      preco_maximo: item.preco_maximo,
+      lances_visiveis: dados.lancesVisiveis,
+      encerra_em: new Date(Date.now() + horas * 3_600_000).toISOString(),
+    });
+  }
+  const { error } = await supabase.from("pedidos").insert(linhas);
+  if (error) return { erro: error.message };
+  revalidatePath("/pedidos");
+  redirect("/pedidos");
+}
