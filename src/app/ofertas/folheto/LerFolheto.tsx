@@ -5,7 +5,7 @@ import { CATEGORIAS, PUBLICO, UNIDADES, porUnidade, type Categoria, type Unidade
 import { Girando } from "@/components/Girando";
 import { publicarFolheto } from "../acoes";
 import { MAXIMO_ENVIO, MAXIMO_PAGINAS, fotoParaJpeg, pdfParaJpegs } from "./paginas";
-import { lerPlanilha } from "./planilha";
+import { lerPlanilha } from "@/lib/planilha";
 
 type Arquivo = { tipo: "image/jpeg"; base64: string; nome: string };
 type Linha = {
