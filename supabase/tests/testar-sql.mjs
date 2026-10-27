@@ -356,6 +356,14 @@ assert.equal(await pode("anon", "telefones_de_negocio(uuid[])"), false, "sem log
 assert.equal(await pode("authenticated", "reservar_oferta(uuid, numeric)"), true, "logado reserva");
 await falha(ids.restaurante, `select devolver_estoque(r) from reservas r limit 1`, [], /permission denied/);
 
+// Contatos cadastrados à mão ficam só na agenda de quem cadastrou.
+await como(ids.restaurante, `insert into contatos_manuais (tipo, nome, telefone) values ('fornecedor', 'Seu Zé da Feira', '83999990000')`);
+assert.equal((await como(ids.restaurante, `select nome from contatos_manuais`)).rows.length, 1);
+assert.equal((await como(ids.atacado, `select nome from contatos_manuais`)).rows.length, 0, "contatos manuais são privados");
+await falha(ids.atacado, `insert into contatos_manuais (dono_id, tipo, nome) values ($1, 'cliente', 'Intruso')`, [ids.restaurante], /row-level security/);
+await como(ids.atacado, `delete from contatos_manuais`);
+assert.equal((await db.query(`select 1 from contatos_manuais`)).rows.length, 1, "outra conta não apaga");
+
 // Ocultar tira o item só da lista de quem ocultou.
 await como(ids.restaurante, `insert into ocultos (tipo, item) values ('oferta', 'x1'), ('historico', 'cebola|kg')`);
 assert.equal((await como(ids.restaurante, `select * from ocultos`)).rows.length, 2);
