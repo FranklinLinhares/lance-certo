@@ -5,6 +5,7 @@ import { BarraSelecao, Marcar } from "@/components/Selecao";
 import { BORDA_CARTAO, Situacao, type TomSituacao } from "@/components/Situacao";
 import { buscarOcultos } from "@/lib/ocultos";
 import { excluirLeiloes } from "./acoes";
+import { MinhasCategorias } from "../vitrine/MinhasCategorias";
 
 type Linha = {
   id: string;
@@ -59,6 +60,13 @@ export default async function Pedidos() {
   paraLance = paraLance.filter((p) => !ocultos.has(p.id));
   meusLeiloes = meusLeiloes.filter((p) => !ocultos.has(p.id));
 
+  // No modo Vender, só os leilões das categorias marcadas (nenhuma marcada = todas),
+  // como os avisos de leilão novo.
+  const marcadas = empresa.categorias as Categoria[];
+  const totalPerto = paraLance.length;
+  if (marcadas.length) paraLance = paraLance.filter((p) => marcadas.includes(p.categoria));
+  const foraDasMarcadas = totalPerto - paraLance.length;
+
   // Lances de cada leilão da lista, do menor para o maior, para mostrar dentro da caixa.
   // A política de segurança só devolve os que a conta pode ver.
   const ids = [...paraLance, ...meusLeiloes].map((p) => p.id);
@@ -89,7 +97,14 @@ export default async function Pedidos() {
         {vendendo ? (
           <>
             <p className="text-sm text-stone-500">Pedidos abertos de compradores dentro do seu raio de entrega de {empresa.raio_km} km. Toque em um para dar lance.</p>
-            {paraLance.length === 0 && <p className="text-stone-600">Nenhum leilão aberto perto de você agora.</p>}
+            <MinhasCategorias
+              marcadas={marcadas}
+              dica={marcadas.length ? "Só aparecem leilões das categorias marcadas, e só delas chega aviso de leilão novo." : "Nenhuma marcada: aparecem leilões de todas as categorias. Marque as que você vende para ver só essas."}
+            />
+            {paraLance.length === 0 && <p className="text-stone-600">Nenhum leilão aberto perto de você agora{marcadas.length ? " nas categorias marcadas" : ""}.</p>}
+            {foraDasMarcadas > 0 && (
+              <p className="text-sm text-stone-500">Mais {foraDasMarcadas} leilão(ões) perto de você em outras categorias. Marque a categoria acima para ver.</p>
+            )}
             <BarraSelecao id="excluir-leiloes" acao={excluirLeiloes} confirmar="Tirar {n} leilão(ões) da sua lista? Eles somem só para você." />
             <PorCategoria pedidos={paraLance} vendendo lances={lances} eu={empresa.id} />
           </>

@@ -109,7 +109,7 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
         </p>
       )}
 
-      <MinhasCategorias marcadas={empresa.categorias} />
+      <MinhasCategorias marcadas={empresa.categorias} dica="As marcadas aparecem primeiro e abertas. A mesma escolha vale para os leilões no modo Vender." />
 
       <BarraSelecao id="ocultar-ofertas" acao={ocultarOfertas} confirmar="Tirar {n} oferta(s) da sua vitrine? Elas somem só para você; o vendedor continua anunciando." />
 

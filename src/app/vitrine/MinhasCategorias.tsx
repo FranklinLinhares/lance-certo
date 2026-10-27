@@ -4,8 +4,9 @@ import { useRef } from "react";
 import { CATEGORIAS, type Categoria } from "@/lib/dominio";
 import { salvarCategorias } from "./acoes";
 
-// Marcar ou desmarcar uma categoria já salva; as marcadas abrem primeiro na vitrine.
-export function MinhasCategorias({ marcadas }: { marcadas: Categoria[] }) {
+// Marcar ou desmarcar uma categoria já salva. A mesma escolha vale para a vitrine
+// (marcadas abrem primeiro) e para os leilões no modo Vender (só as marcadas aparecem).
+export function MinhasCategorias({ marcadas, dica }: { marcadas: Categoria[]; dica: string }) {
   const form = useRef<HTMLFormElement>(null);
   return (
     <form ref={form} action={salvarCategorias} className="space-y-1">
@@ -28,7 +29,7 @@ export function MinhasCategorias({ marcadas }: { marcadas: Categoria[] }) {
           </label>
         ))}
       </div>
-      <p className="text-xs text-stone-500">As marcadas aparecem primeiro e abertas. No modo Vender, você também recebe aviso de leilões novos nelas.</p>
+      <p className="text-xs text-stone-500">{dica}</p>
     </form>
   );
 }
