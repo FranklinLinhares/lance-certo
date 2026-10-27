@@ -21,7 +21,8 @@ export async function comprarOferta(_: EstadoCompra, form: FormData): Promise<Es
   return { ok: "Pedido enviado ao vendedor. A quantidade fica reservada até ele responder." };
 }
 
-// Categorias de interesse: abrem primeiro na vitrine e, no modo Vender, avisam de leilões novos.
+// Categorias de interesse: abrem primeiro na vitrine e, no modo Vender, escolhem
+// quais leilões aparecem e de quais chega aviso.
 export async function salvarCategorias(form: FormData) {
   const { supabase, empresa } = await exigirEmpresa();
   const categorias = form
@@ -30,6 +31,7 @@ export async function salvarCategorias(form: FormData) {
     .filter((c): c is Categoria => c in CATEGORIAS);
   await supabase.from("empresas").update({ categorias }).eq("id", empresa.id);
   revalidatePath("/vitrine");
+  revalidatePath("/pedidos");
 }
 
 // Tira da sua vitrine as ofertas marcadas; para os outros elas continuam.
