@@ -264,6 +264,10 @@ assert.ok((await como(ids.longe, `select id from pedidos_proximos()`)).rows.some
 assert.ok(!(await como(ids.atacado, `select id from pedidos_proximos()`)).rows.some((r) => r.id === convite), "não convidado não vê");
 await como(ids.longe, `select dar_lance($1, 7.00)`, [convite]);
 await falha(ids.atacado, `select dar_lance($1, 6.00)`, [convite], /convidados/);
+// Nem pela API o não convidado lê o leilão; o dono e o convidado leem.
+assert.equal((await como(ids.atacado, `select id from pedidos where id = $1`, [convite])).rows.length, 0, "não convidado não lê o leilão");
+assert.equal((await como(ids.longe, `select id from pedidos where id = $1`, [convite])).rows.length, 1, "convidado lê o leilão");
+assert.equal((await como(ids.restaurante, `select id from pedidos where id = $1`, [convite])).rows.length, 1, "dono lê o leilão");
 
 // Oferta só para clientes escolhidos.
 const ofertaFechada = (await como(ids.atacado, `insert into ofertas (fornecedor_id, produto, produto_chave, categoria, unidade, preco_unitario, quantidade_disponivel, convidados)
@@ -271,6 +275,9 @@ const ofertaFechada = (await como(ids.atacado, `insert into ofertas (fornecedor_
 assert.ok((await como(ids.restaurante, `select id from vitrine_ofertas('arroz')`)).rows.some((r) => r.id === ofertaFechada));
 assert.ok(!(await como(ids.pessoa, `select id from vitrine_ofertas('arroz')`)).rows.some((r) => r.id === ofertaFechada), "quem não é cliente não vê");
 await falha(ids.pessoa, `select reservar_oferta($1, 1)`, [ofertaFechada], /clientes escolhidos/);
+assert.equal((await como(ids.pessoa, `select id from ofertas where id = $1`, [ofertaFechada])).rows.length, 0, "não cliente não lê a oferta pela API");
+assert.equal((await como(ids.restaurante, `select id from ofertas where id = $1`, [ofertaFechada])).rows.length, 1, "cliente escolhido lê a oferta");
+assert.equal((await como(ids.atacado, `select id from ofertas where id = $1`, [ofertaFechada])).rows.length, 1, "dono lê a oferta");
 await como(ids.restaurante, `select reservar_oferta($1, 1)`, [ofertaFechada]);
 
 // Levar todo o estoque esgota a oferta.
