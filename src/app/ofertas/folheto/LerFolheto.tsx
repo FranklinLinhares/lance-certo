@@ -6,6 +6,7 @@ import { Girando } from "@/components/Girando";
 import { publicarFolheto } from "../acoes";
 import { MAXIMO_ENVIO, MAXIMO_PAGINAS, fotoParaJpeg, pdfParaJpegs } from "./paginas";
 import { lerPlanilha } from "@/lib/planilha";
+import { mensagemDaTela } from "@/lib/erros";
 
 type Arquivo = { tipo: "image/jpeg"; base64: string; nome: string };
 type Linha = {
@@ -109,7 +110,7 @@ export function LerFolheto({ comIa }: { comIa: boolean }) {
         })),
       );
     } catch (e) {
-      setErro((e as Error).message);
+      setErro(mensagemDaTela(e));
     } finally {
       setLendo(false);
     }

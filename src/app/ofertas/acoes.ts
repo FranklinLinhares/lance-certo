@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { mensagemDeErro } from "@/lib/erros";
 import { revalidatePath } from "next/cache";
 import { exigirEmpresa } from "@/lib/sessao";
 import { idsMarcados } from "@/lib/ocultos";
@@ -54,7 +55,7 @@ export async function publicarOferta(_: EstadoOferta, form: FormData): Promise<E
     produto_chave: String(form.get("produto_chave") || "") || chaveDoProduto(campos.produto),
     valida_ate: new Date(Date.now() + diasValidaOferta * 86_400_000).toISOString(),
   });
-  if (error) return { erro: error.message };
+  if (error) return { erro: mensagemDeErro(error) };
   revalidatePath("/ofertas");
   redirect("/ofertas");
 }
@@ -69,10 +70,17 @@ export async function editarOferta(_: EstadoOferta, form: FormData): Promise<Est
   const prorrogar = Number(form.get("dias_oferta")) || 0;
   const convidados = await lerConvidados(supabase, empresa.id, "cliente", form);
   if (convidados.erro) return { erro: convidados.erro };
-  const { data, error } = await supabase
+  // Se alguém reservou enquanto a tela estava aberta, o estoque no banco já é outro.
+  // Quantidade sem mudança: não mexe no estoque. Quantidade nova: só grava se o estoque
+  // ainda for o que o vendedor via, para não desfazer a reserva.
+  const original = Number(form.get("quantidade_original"));
+  const mudouEstoque = campos.quantidade_disponivel !== original;
+  const semEstoque: Partial<typeof campos> = { ...campos };
+  delete semEstoque.quantidade_disponivel;
+  let consulta = supabase
     .from("ofertas")
     .update({
-      ...campos,
+      ...(mudouEstoque ? campos : semEstoque),
       convidados: convidados.convidados,
       // A chave agrupa ofertas iguais na vitrine; só muda se o nome do produto mudou.
       produto_chave:
@@ -80,10 +88,22 @@ export async function editarOferta(_: EstadoOferta, form: FormData): Promise<Est
       ...(prorrogar > 0 && { valida_ate: new Date(Date.now() + prorrogar * 86_400_000).toISOString(), ativa: true }),
     })
     .eq("id", id)
-    .eq("fornecedor_id", empresa.id)
-    .select("id");
-  if (error) return { erro: error.message };
-  if (!data?.length) return { erro: "Oferta não encontrada." };
+    .eq("fornecedor_id", empresa.id);
+  if (mudouEstoque) consulta = consulta.eq("quantidade_disponivel", original);
+  const { data, error } = await consulta.select("id");
+  if (error) return { erro: mensagemDeErro(error) };
+  if (!data?.length) {
+    const { data: atual } = await supabase
+      .from("ofertas")
+      .select("quantidade_disponivel, unidade")
+      .eq("id", id)
+      .eq("fornecedor_id", empresa.id)
+      .maybeSingle<{ quantidade_disponivel: number; unidade: string }>();
+    if (!atual) return { erro: "Oferta não encontrada." };
+    return {
+      erro: `O estoque mudou enquanto você editava (chegou ou voltou um pedido) e agora é ${atual.quantidade_disponivel} ${atual.unidade}. Atualize a página, confira a quantidade e salve de novo.`,
+    };
+  }
   revalidatePath("/ofertas");
   revalidatePath("/vitrine");
   redirect(empresa.papel === "fornecedor" ? "/ofertas" : "/vitrine");
@@ -149,7 +169,7 @@ export async function publicarFolheto(dados: { itens: ItemFolheto[]; validaAte: 
   }
 
   const { error } = await supabase.from("ofertas").insert(linhas);
-  if (error) return { erro: error.message };
+  if (error) return { erro: mensagemDeErro(error) };
   revalidatePath("/ofertas");
   revalidatePath("/vitrine");
   redirect("/ofertas");
@@ -161,7 +181,7 @@ export async function excluirOfertas(form: FormData) {
   const ids = idsMarcados(form);
   if (ids.length === 0) return;
   const { error } = await supabase.from("ofertas").delete().in("id", ids).eq("fornecedor_id", empresa.id);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(mensagemDeErro(error));
   revalidatePath("/ofertas");
   revalidatePath("/vitrine");
 }

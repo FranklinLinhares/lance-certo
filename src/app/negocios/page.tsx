@@ -7,6 +7,7 @@ import { cancelarReserva, excluirNegocios, responderReserva } from "./acoes";
 import { BarraSelecao, Marcar } from "@/components/Selecao";
 import { buscarOcultos } from "@/lib/ocultos";
 import { BORDA_CARTAO, Situacao, type TomSituacao } from "@/components/Situacao";
+import { BotaoConfirmar } from "@/components/BotaoConfirmar";
 
 type Negocio = {
   id: string;
@@ -99,7 +100,7 @@ export default async function Negocios() {
                 <form action={responderReserva} className="flex gap-2">
                   <input type="hidden" name="reserva" value={r.id} />
                   <button name="resposta" value="aceitar" className="botao">Aceitar</button>
-                  <button name="resposta" value="recusar" className="botao-secundario">Recusar</button>
+                  <BotaoConfirmar name="resposta" value="recusar" className="botao-secundario" pergunta="Recusar este pedido? A quantidade volta para a sua oferta e o comprador é avisado.">Recusar</BotaoConfirmar>
                 </form>
                 <p className="text-xs text-stone-500">Ao aceitar, vocês veem o WhatsApp um do outro. Ao recusar, a quantidade volta para a oferta.</p>
               </li>
@@ -125,7 +126,7 @@ export default async function Negocios() {
                 {r.situacao === "aguardando" && (
                   <form action={cancelarReserva}>
                     <input type="hidden" name="reserva" value={r.id} />
-                    <button className="botao-secundario py-1 text-sm">Desistir</button>
+                    <BotaoConfirmar className="botao-secundario py-1 text-sm" pergunta="Desistir deste pedido? O vendedor não vai mais poder aceitar.">Desistir</BotaoConfirmar>
                   </form>
                 )}
                 </div>

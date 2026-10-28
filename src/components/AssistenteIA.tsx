@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Categoria, Unidade } from "@/lib/dominio";
 import { Girando } from "./Girando";
+import { mensagemDaTela } from "@/lib/erros";
 
 export type ItemIA = {
   produto: string;
@@ -30,7 +31,7 @@ export function AssistenteIA({ exemplo, aoPreencher }: { exemplo: string; aoPree
       if (!resposta.ok) throw new Error(dados.erro);
       aoPreencher(dados as ItemIA);
     } catch (e) {
-      setErro((e as Error).message);
+      setErro(mensagemDaTela(e));
     } finally {
       setCarregando(false);
     }

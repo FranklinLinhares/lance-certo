@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { mensagemDeErro } from "@/lib/erros";
 import { exigirEmpresa } from "@/lib/sessao";
 import { UNIDADES, chaveDoProduto } from "@/lib/dominio";
 
@@ -27,7 +28,7 @@ export async function criarAlerta(_: EstadoAlerta, form: FormData): Promise<Esta
     unidade,
     preco_maximo: preco,
   });
-  if (error) return { erro: error.message };
+  if (error) return { erro: mensagemDeErro(error) };
   revalidatePath("/avisos");
   return {};
 }

@@ -13,6 +13,7 @@ import { cancelarPedido } from "../acoes";
 import { trocarModo } from "@/app/cadastro/modo";
 import { AoVivo } from "./AoVivo";
 import { DarLance } from "./DarLance";
+import { BotaoConfirmar } from "@/components/BotaoConfirmar";
 
 type Pedido = {
   id: string;
@@ -221,7 +222,7 @@ export default async function DetalhePedido({ params }: PageProps<"/pedidos/[id]
       {souComprador && pedido.status === "aberto" && (
         <form action={cancelarPedido}>
           <input type="hidden" name="pedido" value={id} />
-          <button className="text-sm text-red-700 hover:underline">Cancelar leilão</button>
+          <BotaoConfirmar className="text-sm text-red-700 hover:underline" pergunta="Cancelar este leilão? Os fornecedores não poderão mais dar lances e não dá para reabrir.">Cancelar leilão</BotaoConfirmar>
         </form>
       )}
     </div>

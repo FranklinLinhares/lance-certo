@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { mensagemDeErro } from "@/lib/erros";
 import { exigirEmpresa } from "@/lib/sessao";
 import { idsMarcados, ocultar } from "@/lib/ocultos";
 import { CATEGORIAS, UNIDADES, chaveDoProduto } from "@/lib/dominio";
@@ -30,7 +31,7 @@ export async function registrarCompraExterna(_: EstadoHistorico, form: FormData)
     origem: "externa",
     data: form.get("data") || undefined,
   });
-  if (error) return { erro: error.message };
+  if (error) return { erro: mensagemDeErro(error) };
   revalidatePath("/historico");
   return { ok: true };
 }

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { mensagemDeErro } from "@/lib/erros";
 import { exigirEmpresa } from "@/lib/sessao";
 import { idsMarcados, ocultar } from "@/lib/ocultos";
 import { CATEGORIAS, type Categoria } from "@/lib/dominio";
@@ -15,7 +16,7 @@ export async function comprarOferta(_: EstadoCompra, form: FormData): Promise<Es
     p_oferta: String(form.get("oferta")),
     p_quantidade: quantidade,
   });
-  if (error) return { erro: error.message };
+  if (error) return { erro: mensagemDeErro(error) };
   revalidatePath("/vitrine");
   revalidatePath("/negocios");
   return { ok: "Pedido enviado ao vendedor. A quantidade fica reservada até ele responder." };

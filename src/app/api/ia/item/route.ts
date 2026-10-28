@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { registrarUsoIa } from "@/lib/limite-ia";
-import { estruturarItem, iaDisponivel } from "@/lib/ia";
+import { estruturarItem, iaDisponivel, mensagemDaIa } from "@/lib/ia";
 
 // Transforma o texto livre de um pedido ou oferta em campos preenchidos.
 export async function POST(request: Request) {
@@ -21,6 +21,6 @@ export async function POST(request: Request) {
   try {
     return NextResponse.json(await estruturarItem(texto));
   } catch (e) {
-    return NextResponse.json({ erro: (e as Error).message }, { status: 502 });
+    return NextResponse.json({ erro: mensagemDaIa(e) }, { status: 502 });
   }
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { registrarUsoIa } from "@/lib/limite-ia";
-import { iaDisponivel, lerFolheto, type ArquivoFolheto } from "@/lib/ia";
+import { iaDisponivel, lerFolheto, type ArquivoFolheto, mensagemDaIa } from "@/lib/ia";
 
 // Um folheto com muitas ofertas pode levar mais de um minuto para ser lido.
 export const maxDuration = 300;
@@ -35,6 +35,6 @@ export async function POST(request: Request) {
   try {
     return NextResponse.json(await lerFolheto(arquivos));
   } catch (e) {
-    return NextResponse.json({ erro: (e as Error).message }, { status: 502 });
+    return NextResponse.json({ erro: mensagemDaIa(e) }, { status: 502 });
   }
 }
