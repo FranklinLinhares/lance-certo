@@ -1,4 +1,5 @@
 import type { criarClienteServidor } from "@/lib/supabase/server";
+import { mensagemDeErro } from "@/lib/erros";
 
 type Cliente = Awaited<ReturnType<typeof criarClienteServidor>>;
 
@@ -16,7 +17,7 @@ export async function ocultar(supabase: Cliente, tipo: TipoOculto, itens: string
     itens.map((item) => ({ tipo, item })),
     { onConflict: "empresa_id,tipo,item", ignoreDuplicates: true },
   );
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(mensagemDeErro(error));
 }
 
 // Ids marcados nas caixinhas de seleção (no máximo 200 por vez).

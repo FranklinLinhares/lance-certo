@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { mensagemDeErro } from "@/lib/erros";
 import { exigirEmpresa } from "@/lib/sessao";
 import { idsMarcados, ocultar } from "@/lib/ocultos";
 
@@ -13,7 +14,7 @@ export async function avaliarNegocio(_: EstadoAvaliacao, form: FormData): Promis
     p_nota: Number(form.get("nota")),
     p_comentario: String(form.get("comentario") ?? ""),
   });
-  if (error) return { erro: error.message };
+  if (error) return { erro: mensagemDeErro(error) };
   revalidatePath("/negocios");
   return { ok: true };
 }
@@ -22,7 +23,7 @@ export async function avaliarNegocio(_: EstadoAvaliacao, form: FormData): Promis
 export async function concluirNegocio(form: FormData) {
   const { supabase } = await exigirEmpresa();
   const { error } = await supabase.rpc("concluir_negocio", { p_compra: String(form.get("compra")) });
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(mensagemDeErro(error));
   revalidatePath("/", "layout");
 }
 
@@ -33,7 +34,7 @@ export async function responderReserva(form: FormData) {
     p_reserva: String(form.get("reserva")),
     p_aceitar: form.get("resposta") === "aceitar",
   });
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(mensagemDeErro(error));
   revalidatePath("/", "layout");
 }
 
@@ -41,7 +42,7 @@ export async function responderReserva(form: FormData) {
 export async function cancelarReserva(form: FormData) {
   const { supabase } = await exigirEmpresa();
   const { error } = await supabase.rpc("cancelar_reserva", { p_reserva: String(form.get("reserva")) });
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(mensagemDeErro(error));
   revalidatePath("/", "layout");
 }
 

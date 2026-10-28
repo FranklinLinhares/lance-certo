@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { registrarUsoIa } from "@/lib/limite-ia";
-import { iaDisponivel, pesquisarSupermercados } from "@/lib/ia";
+import { iaDisponivel, pesquisarSupermercados, mensagemDaIa } from "@/lib/ia";
 import { UNIDADES, type Empresa } from "@/lib/dominio";
 
 // A pesquisa na web pode levar mais de um minuto.
@@ -37,6 +37,6 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(resultado);
   } catch (e) {
-    return NextResponse.json({ erro: (e as Error).message }, { status: 502 });
+    return NextResponse.json({ erro: mensagemDaIa(e) }, { status: 502 });
   }
 }

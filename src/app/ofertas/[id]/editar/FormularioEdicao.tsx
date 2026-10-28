@@ -21,6 +21,7 @@ export function FormularioEdicao({
       <input type="hidden" name="id" value={oferta.id} />
       <input type="hidden" name="produto_original" value={oferta.produto} />
       <input type="hidden" name="produto_chave" value={oferta.produto_chave} />
+      <input type="hidden" name="quantidade_original" value={oferta.quantidade_disponivel} />
       <CamposOferta valores={{ ...oferta, quantidade: oferta.quantidade_disponivel }} />
       <div>
         <label className="rotulo" htmlFor="dias_oferta">{vencida ? "Publicar de novo por" : "Prazo na vitrine"}</label>

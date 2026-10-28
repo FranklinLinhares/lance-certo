@@ -9,6 +9,18 @@ import { CATEGORIAS, UNIDADES, type ReferenciaPreco } from "@/lib/dominio";
 
 const MODELO = "claude-opus-5-5";
 
+// Erro com texto pronto para o usuário. Qualquer outro (rede, limite da API) vira uma mensagem genérica.
+export class ErroIa extends Error {}
+
+export function mensagemDaIa(e: unknown) {
+  if (e instanceof ErroIa) return e.message;
+  console.error("Erro da IA:", e);
+  if (e instanceof Anthropic.APIError && (e.status === 429 || e.status === 529)) {
+    return "A IA está com muitos pedidos agora. Tente de novo em alguns minutos.";
+  }
+  return "A IA não respondeu agora. Tente de novo em instantes.";
+}
+
 export function iaDisponivel() {
   return Boolean(process.env.ANTHROPIC_API_KEY);
 }
@@ -44,7 +56,7 @@ export async function estruturarItem(texto: string): Promise<ItemEstruturado> {
     messages: [{ role: "user", content: texto }],
   });
   if (resposta.stop_reason === "refusal" || !resposta.parsed_output) {
-    throw new Error("A IA não conseguiu entender o texto. Preencha os campos manualmente.");
+    throw new ErroIa("A IA não conseguiu entender o texto. Preencha os campos manualmente.");
   }
   return resposta.parsed_output;
 }
@@ -89,7 +101,7 @@ Liste cada fonte com título, URL e preço por ${unidade}.`;
     .finalMessage();
 
   if (pesquisa.stop_reason === "refusal") {
-    throw new Error("A pesquisa de preço não pôde ser feita agora.");
+    throw new ErroIa("A pesquisa de preço não pôde ser feita agora.");
   }
   const textoPesquisa = pesquisa.content
     .map((bloco) => (bloco.type === "text" ? bloco.text : ""))
@@ -112,7 +124,7 @@ Liste cada fonte com título, URL e preço por ${unidade}.`;
     ],
   });
   if (!organizado.parsed_output) {
-    throw new Error("Não foi possível organizar a pesquisa de preço.");
+    throw new ErroIa("Não foi possível organizar a pesquisa de preço.");
   }
   return { ...organizado.parsed_output, unidade: params.unidade };
 }
@@ -165,7 +177,7 @@ Não invente preços: liste só o que encontrar.`;
     .finalMessage();
 
   if (pesquisa.stop_reason === "refusal") {
-    throw new Error("A pesquisa de preço não pôde ser feita agora.");
+    throw new ErroIa("A pesquisa de preço não pôde ser feita agora.");
   }
   const textoPesquisa = pesquisa.content
     .map((bloco) => (bloco.type === "text" ? bloco.text : ""))
@@ -183,7 +195,7 @@ Não invente preços: liste só o que encontrar.`;
     ],
   });
   if (!organizado.parsed_output) {
-    throw new Error("Não foi possível organizar a pesquisa de preço.");
+    throw new ErroIa("Não foi possível organizar a pesquisa de preço.");
   }
   const resultado = organizado.parsed_output;
   return { ...resultado, precos: [...resultado.precos].sort((a, b) => a.preco - b.preco) };
@@ -242,7 +254,7 @@ export async function lerFolheto(arquivos: ArquivoFolheto[]): Promise<FolhetoLid
     })
     .finalMessage();
   if (resposta.stop_reason === "refusal" || !resposta.parsed_output) {
-    throw new Error("A IA não conseguiu ler este folheto. Tente uma foto mais nítida ou o PDF do encarte.");
+    throw new ErroIa("A IA não conseguiu ler este folheto. Tente uma foto mais nítida ou o PDF do encarte.");
   }
   return resposta.parsed_output;
 }

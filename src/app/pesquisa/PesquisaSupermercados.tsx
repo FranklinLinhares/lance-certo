@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { UNIDADES, porUnidade, type Unidade } from "@/lib/dominio";
 import type { PesquisaSupermercados as Resultado } from "@/lib/ia";
 import { Girando } from "@/components/Girando";
+import { mensagemDaTela } from "@/lib/erros";
 
 const FONTES = { site: "Site", encarte: "Encarte", aplicativo: "Aplicativo", outro: "Outro" } as const;
 
@@ -48,7 +49,7 @@ export function PesquisaSupermercados({ raioInicial, produtoInicial }: { raioIni
         if (!resposta.ok) throw new Error(json.erro);
         return { resultado: { ...json, unidade } };
       } catch (e) {
-        return (e as Error).name === "AbortError" ? {} : { erro: (e as Error).message };
+        return (e as Error).name === "AbortError" ? {} : { erro: mensagemDaTela(e) };
       }
     })().then((e) => {
       ultimo = e;

@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { mensagemDeErro } from "@/lib/erros";
 import { revalidatePath } from "next/cache";
 import { exigirEmpresa } from "@/lib/sessao";
 import { idsMarcados, ocultar } from "@/lib/ocultos";
@@ -50,7 +51,7 @@ export async function criarPedido(_: EstadoForm, form: FormData): Promise<Estado
     })
     .select("id")
     .single();
-  if (error) return { erro: error.message };
+  if (error) return { erro: mensagemDeErro(error) };
   redirect(`/pedidos/${data.id}`);
 }
 
@@ -65,7 +66,7 @@ export async function darLance(_: EstadoForm, form: FormData): Promise<EstadoFor
     p_validade: form.get("validade") || null,
     p_observacao: String(form.get("observacao") ?? "").trim() || null,
   });
-  if (error) return { erro: error.message };
+  if (error) return { erro: mensagemDeErro(error) };
   revalidatePath(`/pedidos/${pedido}`);
   return { ok: `Lance de R$ ${preco.toFixed(2).replace(".", ",")} enviado.` };
 }
@@ -74,7 +75,7 @@ export async function escolherVencedor(form: FormData) {
   const { supabase } = await exigirEmpresa();
   const pedido = String(form.get("pedido"));
   const { error } = await supabase.rpc("fechar_pedido", { p_pedido: pedido, p_lance: String(form.get("lance")) });
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(mensagemDeErro(error));
   revalidatePath(`/pedidos/${pedido}`);
   redirect(`/pedidos/${pedido}`);
 }
@@ -137,7 +138,7 @@ export async function criarLeiloes(dados: { itens: ItemLeilaoNovo[]; horas: numb
     });
   }
   const { error } = await supabase.from("pedidos").insert(linhas);
-  if (error) return { erro: error.message };
+  if (error) return { erro: mensagemDeErro(error) };
   revalidatePath("/pedidos");
   redirect("/pedidos");
 }

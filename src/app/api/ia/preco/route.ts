@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { registrarUsoIa } from "@/lib/limite-ia";
-import { iaDisponivel, pesquisarPreco } from "@/lib/ia";
+import { iaDisponivel, pesquisarPreco, mensagemDaIa } from "@/lib/ia";
 import { UNIDADES, type Empresa } from "@/lib/dominio";
 
 // Pesquisa uma faixa de preço de referência para o produto, na região do usuário.
@@ -43,6 +43,6 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(referencia);
   } catch (e) {
-    return NextResponse.json({ erro: (e as Error).message }, { status: 502 });
+    return NextResponse.json({ erro: mensagemDaIa(e) }, { status: 502 });
   }
 }

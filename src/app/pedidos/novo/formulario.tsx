@@ -8,6 +8,7 @@ import { CATEGORIAS, UNIDADES, type ReferenciaPreco as Referencia } from "@/lib/
 import { Girando } from "@/components/Girando";
 import { EscolherConvidados } from "@/components/EscolherConvidados";
 import type { Contato } from "@/lib/contatos";
+import { mensagemDaTela } from "@/lib/erros";
 
 export function FormularioPedido({ produtoInicial, fornecedores }: { produtoInicial: string; fornecedores: Contato[] }) {
   const [estado, acao, enviando] = useActionState<EstadoForm, FormData>(criarPedido, {});
@@ -37,7 +38,7 @@ export function FormularioPedido({ produtoInicial, fornecedores }: { produtoInic
       setReferencia(json);
       if (json.preco_maximo_sugerido && !precoMaximo) setPrecoMaximo(String(json.preco_maximo_sugerido));
     } catch (e) {
-      setErroPesquisa((e as Error).message);
+      setErroPesquisa(mensagemDaTela(e));
     } finally {
       setPesquisando(false);
     }
