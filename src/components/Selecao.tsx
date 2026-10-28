@@ -58,7 +58,7 @@ export function BarraSelecao({
       onSubmit={(e) => {
         if (!confirm(confirmar.replace("{n}", String(marcados)))) e.preventDefault();
       }}
-      className={`sticky top-2 z-10 flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2 text-sm shadow-sm ${marcados ? "border-red-300 bg-red-50" : "border-stone-200 bg-white"}`}
+      className={`sticky top-16 z-10 flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2 text-sm shadow-sm ${marcados ? "border-red-300 bg-red-50" : "border-stone-200 bg-white"}`}
     >
       <label className="flex cursor-pointer items-center gap-2 font-medium">
         <input

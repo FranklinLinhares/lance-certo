@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f8f4;
+  --background: #f4f7f1;
   --foreground: #1c2418;
 }
 
@@ -9,33 +9,77 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
+  --animate-surgir: surgir 0.35s ease-out both;
+  --animate-pulsar: pulsar 1.6s ease-in-out infinite;
+}
+
+@keyframes surgir {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pulsar {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
 }
 
 body {
-  background: var(--background);
   color: var(--foreground);
+  background:
+    radial-gradient(1200px 500px at 100% -10%, rgb(187 247 208 / 0.45), transparent 60%),
+    radial-gradient(900px 400px at -10% 0%, rgb(254 243 199 / 0.5), transparent 55%),
+    var(--background);
+  background-attachment: fixed;
+}
+
+/* Caixas de categoria abrem com um leve deslizar. */
+details[open] > :not(summary) {
+  animation: surgir 0.25s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @layer components {
   .cartao {
-    @apply rounded-xl border border-stone-200 bg-white p-4 shadow-sm;
+    @apply rounded-2xl border border-stone-200/80 bg-white p-4 shadow-sm shadow-stone-200/60 transition duration-200 hover:shadow-md;
   }
   .campo {
-    @apply w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-base focus:border-green-700 focus:outline-none focus:ring-2 focus:ring-green-700/20;
+    @apply w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-base transition-colors focus:border-green-600 focus:outline-none focus:ring-4 focus:ring-green-600/15;
   }
   .rotulo {
     @apply mb-1 block text-sm font-medium text-stone-700;
   }
   .botao {
-    @apply inline-flex items-center justify-center rounded-lg bg-green-700 px-4 py-2 font-semibold text-white hover:bg-green-800 disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-b from-green-600 to-green-700 px-4 py-2 font-semibold text-white shadow-sm shadow-green-900/20 transition hover:from-green-700 hover:to-green-800 hover:shadow-md active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100;
   }
   .botao-secundario {
-    @apply inline-flex items-center justify-center rounded-lg border border-green-700 px-4 py-2 font-semibold text-green-800 hover:bg-green-50 disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-1.5 rounded-xl border border-green-700/60 bg-white px-4 py-2 font-semibold text-green-800 transition hover:border-green-700 hover:bg-green-50 active:scale-[0.97] disabled:opacity-50;
   }
   .erro {
-    @apply rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800;
+    @apply animate-surgir rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800;
   }
   .aviso {
-    @apply rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900;
+    @apply animate-surgir rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900;
+  }
+  .esqueleto {
+    @apply animate-pulsar rounded-xl bg-stone-200/80;
   }
 }
