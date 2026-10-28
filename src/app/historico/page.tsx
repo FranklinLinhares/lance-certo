@@ -23,7 +23,7 @@ function dozeSemanasAtras() {
 // Quanto o comprador pagou por produto, semana a semana, e a variação.
 export default async function Historico() {
   const { supabase, empresa } = await exigirEmpresa();
-  if (empresa.papel !== "comprador") redirect("/vitrine");
+  if (empresa.papel !== "comprador") redirect("/ofertas");
 
   const { data } = await supabase
     .from("historico_semanal")
