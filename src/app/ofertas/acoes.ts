@@ -16,12 +16,16 @@ function lerCampos(form: FormData) {
   const categoria = String(form.get("categoria"));
   const unidade = String(form.get("unidade"));
   const preco = Number(String(form.get("preco_unitario")).replace(",", "."));
-  const quantidade = Number(String(form.get("quantidade_disponivel")).replace(",", "."));
+  const soNaLoja = form.get("como_vender") === "loja";
+  const textoQuantidade = String(form.get("quantidade_disponivel") ?? "").trim();
+  // Na promoção só na loja o estoque é opcional; em branco fica 0.
+  const quantidade = soNaLoja && !textoQuantidade ? 0 : Number(textoQuantidade.replace(",", "."));
   const vendePara = String(form.get("vende_para"));
 
   if (!produto) return { erro: "Informe o produto." };
   if (!(categoria in CATEGORIAS) || !(unidade in UNIDADES)) return { erro: "Escolha a categoria e a unidade." };
-  if (!(preco > 0) || !(quantidade > 0)) return { erro: "Informe preço e quantidade maiores que zero." };
+  if (!(preco > 0)) return { erro: "Informe um preço maior que zero." };
+  if (soNaLoja ? !(quantidade >= 0) : !(quantidade > 0)) return { erro: "Informe uma quantidade maior que zero." };
 
   return {
     campos: {
@@ -34,6 +38,7 @@ function lerCampos(form: FormData) {
       disponivel_a_partir: form.get("disponivel_a_partir") || null,
       descricao: String(form.get("descricao") ?? "").trim() || null,
       vende_para: vendePara in PUBLICO ? vendePara : "todos",
+      so_na_loja: soNaLoja,
     },
   };
 }
@@ -136,7 +141,12 @@ export type ItemFolheto = {
 };
 
 // Publica de uma vez os itens do folheto que o vendedor revisou.
-export async function publicarFolheto(dados: { itens: ItemFolheto[]; validaAte: string; vendePara: string }): Promise<EstadoOferta> {
+export async function publicarFolheto(dados: {
+  itens: ItemFolheto[];
+  validaAte: string;
+  vendePara: string;
+  soNaLoja: boolean;
+}): Promise<EstadoOferta> {
   const { supabase, empresa } = await exigirEmpresa();
   if (empresa.papel !== "fornecedor") return { erro: "Mude para o modo Vender, no menu, para publicar ofertas." };
   if (dados.itens.length === 0) return { erro: "Marque pelo menos um item para publicar." };
@@ -153,7 +163,8 @@ export async function publicarFolheto(dados: { itens: ItemFolheto[]; validaAte: 
     const quantidade = Number(item.quantidade_disponivel);
     if (!produto) return { erro: "Há um item sem nome." };
     if (!(item.categoria in CATEGORIAS) || !(item.unidade in UNIDADES)) return { erro: `Confira a categoria e a unidade de "${produto}".` };
-    if (!(preco > 0) || !(quantidade > 0)) return { erro: `Informe preço e estoque maiores que zero em "${produto}".` };
+    if (!(preco > 0)) return { erro: `Informe um preço maior que zero em "${produto}".` };
+    if (dados.soNaLoja ? !(quantidade >= 0) : !(quantidade > 0)) return { erro: `Informe um estoque maior que zero em "${produto}".` };
     linhas.push({
       fornecedor_id: empresa.id,
       produto,
@@ -164,6 +175,7 @@ export async function publicarFolheto(dados: { itens: ItemFolheto[]; validaAte: 
       preco_unitario: preco,
       quantidade_disponivel: quantidade,
       vende_para: dados.vendePara in PUBLICO ? dados.vendePara : "todos",
+      so_na_loja: dados.soNaLoja,
       valida_ate: validaAte.toISOString(),
     });
   }

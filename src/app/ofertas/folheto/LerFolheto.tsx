@@ -38,6 +38,8 @@ export function LerFolheto({ comIa }: { comIa: boolean }) {
   const [linhas, setLinhas] = useState<Linha[]>();
   const [validaAte, setValidaAte] = useState(emDias(7));
   const [vendePara, setVendePara] = useState("todos");
+  // Encarte de supermercado quase sempre é promoção só na loja; planilha costuma ser venda pelo app.
+  const [soNaLoja, setSoNaLoja] = useState(false);
   const [estoque, setEstoque] = useState("");
   const [publicando, iniciarPublicacao] = useTransition();
 
@@ -80,6 +82,7 @@ export function LerFolheto({ comIa }: { comIa: boolean }) {
       const itens = await lerPlanilha(arquivo);
       if (itens.length === 0) throw new Error("A planilha não tem produtos. Preencha a partir da linha 2.");
       setLoja(null);
+      setSoNaLoja(false);
       setLinhas(itens.map((i) => ({ ...i, incluir: true, produto_chave: "" })));
     } catch (e) {
       setErro((e as Error).message || "Não foi possível ler a planilha. Use o modelo em .xlsx ou .csv.");
@@ -100,6 +103,7 @@ export function LerFolheto({ comIa }: { comIa: boolean }) {
       const lido = dados as Lido;
       if (lido.itens.length === 0) throw new Error("A IA não encontrou alimentos com preço neste folheto.");
       setLoja(lido.loja);
+      setSoNaLoja(true);
       if (lido.valido_ate && lido.valido_ate >= emDias(0)) setValidaAte(lido.valido_ate);
       setLinhas(
         lido.itens.map((i) => ({
@@ -127,6 +131,7 @@ export function LerFolheto({ comIa }: { comIa: boolean }) {
       const resultado = await publicarFolheto({
         validaAte,
         vendePara,
+        soNaLoja,
         itens: marcados.map((l) => ({
           produto: l.produto,
           produto_chave: l.produto_chave,
@@ -222,13 +227,20 @@ export function LerFolheto({ comIa }: { comIa: boolean }) {
           ) : (
             <>A IA encontrou <strong>{linhas.length} itens</strong>{loja && <> no folheto de {loja}</>}.</>
           )}{" "}
-          Confira nome, preço e unidade, desmarque o que não quer vender e informe o estoque.
+          Confira nome, preço e unidade, desmarque o que não quer vender e informe o estoque{soNaLoja && " (opcional na promoção só na loja)"}.
           {linhas.some((l) => l.conferir) && <span className="block text-amber-800">Os itens em amarelo têm categoria ou unidade que não reconhecemos: confira antes de publicar.</span>}
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
           <div>
             <label className="rotulo" htmlFor="valida_ate">Ofertas valem até</label>
             <input id="valida_ate" type="date" min={emDias(0)} value={validaAte} onChange={(e) => setValidaAte(e.target.value)} className="campo" />
+          </div>
+          <div>
+            <label className="rotulo" htmlFor="como_vender">Como vender</label>
+            <select id="como_vender" value={soNaLoja ? "loja" : "app"} onChange={(e) => setSoNaLoja(e.target.value === "loja")} className="campo">
+              <option value="app">Pelo app (aceita pedidos)</option>
+              <option value="loja">Só na loja (promoção, mostra seu WhatsApp)</option>
+            </select>
           </div>
           <div>
             <label className="rotulo" htmlFor="vende_para">Vender para</label>

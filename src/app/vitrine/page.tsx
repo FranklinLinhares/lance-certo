@@ -29,20 +29,26 @@ type Oferta = {
   validade: string | null;
   disponivel_a_partir: string | null;
   descricao: string | null;
+  valida_ate: string;
+  so_na_loja: boolean;
+  telefone_loja: string | null;
 };
 
 export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
-  const { q, de } = await searchParams;
+  const { q, de, como } = await searchParams;
   const termo = typeof q === "string" ? q.trim() : "";
   // Filtro do comprador: ofertas de empresas (CNPJ), de pessoas físicas (CPF) ou de todos.
   const origem = de === "pj" || de === "pf" ? de : "todos";
+  // Filtro: ofertas que dá para comprar pelo app, promoções só na loja, ou todas.
+  const modo = como === "app" || como === "loja" ? como : "todos";
   const { supabase, empresa } = await exigirEmpresa();
 
   const { data } = await supabase.rpc("vitrine_ofertas", { termo: termo || null });
   // As próprias ofertas ficam em Minhas ofertas; a vitrine mostra só as de outras pessoas.
   const ocultas = await buscarOcultos(supabase, "oferta");
   const ofertas = ((data ?? []) as Oferta[]).filter(
-    (o) => o.fornecedor_id !== empresa.id && !ocultas.has(o.id) && (origem === "todos" || o.fornecedor_pj === (origem === "pj")),
+    (o) => o.fornecedor_id !== empresa.id && !ocultas.has(o.id) && (origem === "todos" || o.fornecedor_pj === (origem === "pj")) &&
+      (modo === "todos" || o.so_na_loja === (modo === "loja")),
   );
   const reputacao = await buscarReputacao(supabase, ofertas.map((o) => o.fornecedor_id));
 
@@ -94,6 +100,11 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
           <option value="todos">Todos</option>
           <option value="pj">Empresas (CNPJ)</option>
           <option value="pf">Pessoas físicas (CPF)</option>
+        </select>
+        <select name="como" defaultValue={modo} aria-label="Como comprar" className="campo w-auto">
+          <option value="todos">Pelo app e na loja</option>
+          <option value="app">Comprar pelo app</option>
+          <option value="loja">Promoções de loja</option>
         </select>
         <button className="botao">Buscar</button>
       </form>
@@ -159,6 +170,11 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
             <ul className="divide-y divide-stone-100">
               {lista.map((o) => (
                 <li key={o.id} className="space-y-1 py-2">
+                  {o.so_na_loja && (
+                    <Situacao tom="loja">
+                      Promoção na loja: confira e compre direto na loja, em {o.cidade}
+                    </Situacao>
+                  )}
                   {meusPedidos.get(o.id)?.aguardando ? (
                     <Situacao tom="pedido">
                       Você pediu {meusPedidos.get(o.id)!.aguardando} {u}, aguardando o vendedor aceitar
@@ -181,7 +197,9 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
                       {o.vende_para !== "todos" && <span className="ml-2 rounded-full bg-violet-100 px-2 py-0.5 text-xs text-violet-900">{PUBLICO[o.vende_para]}</span>}
                       {o.agricultor && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">Agricultura familiar</span>}
                       <div className="text-sm text-stone-500">
-                        {o.cidade} · {o.distancia_km} km · {o.quantidade_disponivel} {u} disponíveis
+                        {o.cidade} · {o.distancia_km} km
+                        {(!o.so_na_loja || Number(o.quantidade_disponivel) > 0) && <> · {o.quantidade_disponivel} {u} disponíveis</>}
+                        {o.so_na_loja && <> · até {new Date(o.valida_ate).toLocaleDateString("pt-BR")}</>}
                         {o.validade && <> · validade {new Date(o.validade).toLocaleDateString("pt-BR")}</>}
                         {o.disponivel_a_partir && <> · a partir de {new Date(o.disponivel_a_partir).toLocaleDateString("pt-BR")}</>}
                       </div>
@@ -193,7 +211,18 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
                       <SeloPreco preco={o.preco_unitario} mercado={mercado} unidade={u} />
                     </div>
                   </div>
-                  {empresa.papel === "comprador" && (
+                  {o.so_na_loja ? (
+                    o.telefone_loja && (
+                      <a
+                        href={`https://wa.me/55${o.telefone_loja}?text=${encodeURIComponent(`Olá! Vi no Lance Certo a promoção de ${o.produto} a ${porUnidade(o.preco_unitario, u)}.`)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="botao-secundario py-1 text-sm"
+                      >
+                        Falar com a loja no WhatsApp
+                      </a>
+                    )
+                  ) : empresa.papel === "comprador" && (
                     // Comprar leva à confirmação, que mostra quem vende antes de fechar.
                     <form action={`/vitrine/${o.id}`} className="flex flex-wrap items-center gap-2 text-sm">
                       <label className="flex items-center gap-1">

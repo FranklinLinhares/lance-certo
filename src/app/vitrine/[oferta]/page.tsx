@@ -15,6 +15,7 @@ type Oferta = {
   quantidade_disponivel: number;
   validade: string | null;
   descricao: string | null;
+  so_na_loja: boolean;
 };
 
 // Confirmação da compra: mostra quem vende antes de fechar o negócio.
@@ -26,7 +27,7 @@ export default async function ConfirmarCompra({ params, searchParams }: PageProp
   // A vitrine já filtra o que esta conta pode ver e comprar.
   const { data } = await supabase.rpc("vitrine_ofertas", { termo: null });
   const oferta = ((data ?? []) as Oferta[]).find((o) => o.id === id && o.fornecedor_id !== empresa.id);
-  if (!oferta) notFound();
+  if (!oferta || oferta.so_na_loja) notFound();
 
   const pedida = Number(String(quantidade ?? "").replace(",", "."));
   const qtd = pedida > 0 ? Math.min(pedida, Number(oferta.quantidade_disponivel)) : Math.min(1, Number(oferta.quantidade_disponivel));
