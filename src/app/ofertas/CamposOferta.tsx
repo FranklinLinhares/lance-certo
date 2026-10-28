@@ -10,12 +10,32 @@ export type ValoresOferta = {
   disponivel_a_partir?: string | null;
   vende_para?: Publico;
   descricao?: string | null;
+  so_na_loja?: boolean;
 };
 
 // Campos da oferta, usados para publicar e para editar.
 export function CamposOferta({ valores }: { valores: ValoresOferta }) {
   return (
     <>
+      <fieldset>
+        <legend className="rotulo">Como vender</legend>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-stone-300 p-3 has-checked:border-green-600 has-checked:bg-green-50">
+            <input type="radio" name="como_vender" value="app" defaultChecked={!valores.so_na_loja} className="mt-1" />
+            <span>
+              <span className="font-medium">Pelo app</span>
+              <span className="block text-xs text-stone-500">O comprador faz o pedido aqui e você aceita ou recusa.</span>
+            </span>
+          </label>
+          <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-stone-300 p-3 has-checked:border-amber-500 has-checked:bg-amber-50">
+            <input type="radio" name="como_vender" value="loja" defaultChecked={valores.so_na_loja} className="mt-1" />
+            <span>
+              <span className="font-medium">Só na loja</span>
+              <span className="block text-xs text-stone-500">Promoção para conferir na loja, sem compra pelo app. Seu WhatsApp aparece no anúncio.</span>
+            </span>
+          </label>
+        </div>
+      </fieldset>
       <div>
         <label className="rotulo" htmlFor="produto">Produto</label>
         <input id="produto" name="produto" required defaultValue={valores.produto} className="campo" />
@@ -41,7 +61,8 @@ export function CamposOferta({ valores }: { valores: ValoresOferta }) {
         </div>
         <div>
           <label className="rotulo" htmlFor="quantidade_disponivel">Quantidade disponível</label>
-          <input id="quantidade_disponivel" name="quantidade_disponivel" required inputMode="decimal" defaultValue={valores.quantidade ?? ""} className="campo" />
+          <input id="quantidade_disponivel" name="quantidade_disponivel" inputMode="decimal" defaultValue={valores.quantidade ?? ""} className="campo" />
+          <p className="mt-1 text-xs text-stone-500">Opcional na promoção só na loja.</p>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2">

@@ -109,6 +109,17 @@ const propria = (await db.query(`select id from ofertas where fornecedor_id = $1
 await falha(ids.atacado, `select reservar_oferta($1, 1)`, [propria], /própria oferta/);
 await db.exec(`update empresas set papel = 'fornecedor' where id = '${ids.atacado}'`);
 
+// Promoção só na loja: aparece na vitrine com o WhatsApp da loja, mas não aceita pedido.
+await db.exec(`update ofertas set so_na_loja = true where fornecedor_id = '${ids.atacado}'`);
+const naLoja = (await como(ids.restaurante, `select so_na_loja, telefone_loja from vitrine_ofertas('tomate') where fornecedor_id = $1`, [ids.atacado])).rows[0];
+assert.equal(naLoja.so_na_loja, true);
+assert.ok(naLoja.telefone_loja, "promoção de loja mostra o WhatsApp");
+await falha(ids.restaurante, `select reservar_oferta($1, 1)`, [propria], /só na loja/);
+assert.equal((await db.query(`select quantidade_disponivel q from ofertas where id = $1`, [propria])).rows[0].q, "400.00", "estoque não muda");
+await db.exec(`update ofertas set so_na_loja = false where fornecedor_id = '${ids.atacado}'`);
+assert.equal((await como(ids.restaurante, `select telefone_loja from vitrine_ofertas('tomate') where fornecedor_id = $1`, [ids.atacado])).rows[0].telefone_loja, null,
+  "oferta vendida pelo app não mostra telefone");
+
 // Pedido aberto (lances visíveis) e pedido fechado (lances ocultos).
 const amanha = "now() + interval '1 day'";
 const aberto = (await como(ids.restaurante, `insert into pedidos (comprador_id, produto, produto_chave, categoria, unidade, quantidade, preco_maximo, lances_visiveis, encerra_em)
@@ -352,6 +363,8 @@ const pode = async (papel, funcao) =>
 assert.equal(await pode("authenticated", "devolver_estoque(reservas)"), false, "devolver_estoque é interna");
 assert.equal(await pode("authenticated", "avisar_lance()"), false, "gatilho não é chamável");
 assert.equal(await pode("anon", "reservar_oferta(uuid, numeric)"), false, "sem login não reserva");
+assert.equal(await pode("anon", "vitrine_ofertas(text)"), false, "sem login não vê a vitrine");
+assert.equal(await pode("authenticated", "vitrine_ofertas(text)"), true, "logado vê a vitrine");
 assert.equal(await pode("anon", "telefones_de_negocio(uuid[])"), false, "sem login não vê telefones");
 assert.equal(await pode("authenticated", "reservar_oferta(uuid, numeric)"), true, "logado reserva");
 await falha(ids.restaurante, `select devolver_estoque(r) from reservas r limit 1`, [], /permission denied/);

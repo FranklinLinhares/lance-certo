@@ -20,6 +20,7 @@ type Oferta = {
   valida_ate: string;
   ativa: boolean;
   convidados: string[] | null;
+  so_na_loja: boolean;
 };
 
 export default async function EditarOferta({ params }: PageProps<"/ofertas/[id]/editar">) {

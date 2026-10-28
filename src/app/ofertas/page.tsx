@@ -19,6 +19,7 @@ type Oferta = {
   ativa: boolean;
   vende_para: Publico;
   convidados: string[] | null;
+  so_na_loja: boolean;
   compras: { quantidade: number; data: string; comprador_id: string; comprador: { nome: string } | null }[];
 };
 
@@ -95,9 +96,13 @@ export default async function MinhasOfertas() {
               <div className="flex items-start gap-3">
                 <Marcar form="excluir-ofertas" valor={o.id} nome={o.produto} />
                 <div>
-                <div className="font-semibold">{o.produto}</div>
+                <div className="font-semibold">
+                  {o.produto}
+                  {o.so_na_loja && <span className="ml-2 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-900">🏪 Só na loja</span>}
+                </div>
                 <div className="text-sm text-stone-500">
-                  {CATEGORIAS[o.categoria]} · {o.quantidade_disponivel} {o.unidade} · válida até {dataHora(o.valida_ate)}
+                  {CATEGORIAS[o.categoria]}
+                  {(!o.so_na_loja || Number(o.quantidade_disponivel) > 0) && <> · {o.quantidade_disponivel} {o.unidade}</>} · válida até {dataHora(o.valida_ate)}
                   {o.convidados ? <> · Só para {o.convidados.length} cliente{o.convidados.length > 1 ? "s" : ""} escolhido{o.convidados.length > 1 ? "s" : ""}</> : o.vende_para !== "todos" && <> · {PUBLICO[o.vende_para]}</>}
                 </div>
                 </div>
