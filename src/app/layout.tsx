@@ -6,6 +6,7 @@ import "./globals.css";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { sair } from "@/app/entrar/acoes";
 import { trocarModo } from "@/app/cadastro/modo";
+import { Navegacao, type ItemMenu } from "@/components/Navegacao";
 
 const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
@@ -20,18 +21,21 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="pt-BR" className={`${geist.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
-        <header className="border-b border-stone-200 bg-white">
-          <nav className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3">
-            <Link href="/" className="text-lg font-bold text-green-800">
-              Lance Certo
+        <header className="sticky top-0 z-30 border-b border-stone-200/70 bg-white/95 shadow-sm shadow-stone-200/40">
+          <nav className="mx-auto flex max-w-5xl items-center gap-x-4 gap-y-2 px-4 py-2.5">
+            <Link href="/" className="flex shrink-0 items-center gap-2 text-lg font-bold text-green-800">
+              <span aria-hidden className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-br from-green-500 to-green-800 text-base text-white shadow-sm">
+                ⚖
+              </span>
+              <span className="hidden min-[400px]:inline">Lance Certo</span>
             </Link>
             <Suspense>
               <Menu />
             </Suspense>
           </nav>
         </header>
-        <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
-          <Suspense fallback={<p className="text-stone-500">Carregando...</p>}>{children}</Suspense>
+        <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-24 lg:pb-10">
+          <Suspense>{children}</Suspense>
         </main>
       </body>
     </html>
@@ -56,23 +60,20 @@ async function Menu() {
     ? await supabase.from("avisos").select("id", { count: "exact", head: true }).eq("empresa_id", empresa.id).eq("lido", false)
     : { count: 0 };
 
+  const itens: ItemMenu[] = empresa
+    ? [
+        { href: "/vitrine", rotulo: "Vitrine", curto: "Vitrine", icone: "🛒" },
+        { href: "/pedidos", rotulo: "Leilões", curto: "Leilões", icone: "🔨" },
+        ...(empresa.papel === "comprador" ? [{ href: "/historico", rotulo: "Meus preços", curto: "Preços", icone: "📈" }] : []),
+        { href: "/ofertas", rotulo: "Minhas ofertas", curto: "Ofertas", icone: "🏷️" },
+        { href: "/negocios", rotulo: "Negócios", curto: "Negócios", icone: "🤝", contador: aResponder ?? 0 },
+        { href: "/contatos", rotulo: "Contatos", curto: "Contatos", icone: "👥" },
+      ]
+    : [];
+
   return (
     <>
-      {empresa && (
-        <>
-          <Link href="/vitrine" className="hover:text-green-800">Vitrine</Link>
-          <Link href="/pedidos" className="hover:text-green-800">Leilões</Link>
-          {empresa.papel === "comprador" && (
-            <Link href="/historico" className="hover:text-green-800">Meus preços</Link>
-          )}
-          <Link href="/ofertas" className="hover:text-green-800">Minhas ofertas</Link>
-          <Link href="/negocios" className="hover:text-green-800">
-            Negócios
-            {!!aResponder && <span className="ml-1 rounded-full bg-amber-500 px-1.5 text-xs font-bold text-white">{aResponder}</span>}
-          </Link>
-          <Link href="/contatos" className="hover:text-green-800">Contatos</Link>
-        </>
-      )}
+      {empresa && <Navegacao itens={itens} />}
       <div className="ml-auto flex items-center gap-3 text-sm">
         {empresa && (
           <form action={trocarModo} className="flex overflow-hidden rounded-full border border-stone-300">
@@ -82,7 +83,7 @@ async function Menu() {
                 name="papel"
                 value={p}
                 aria-pressed={empresa.papel === p}
-                className={`px-3 py-1 ${empresa.papel === p ? "bg-green-700 font-semibold text-white" : "text-stone-600 hover:bg-stone-100"}`}
+                className={`px-3 py-1 transition ${empresa.papel === p ? "bg-green-700 font-semibold text-white" : "text-stone-600 hover:bg-stone-100"}`}
               >
                 {p === "comprador" ? "Comprar" : "Vender"}
               </button>
@@ -90,14 +91,21 @@ async function Menu() {
           </form>
         )}
         {empresa && (
-          <Link href="/avisos" title="Avisos" aria-label={`Avisos${naoLidos ? `: ${naoLidos} novos` : ""}`} className="relative text-lg leading-none text-stone-600 hover:text-green-800">
+          <Link href="/avisos" title="Avisos" aria-label={`Avisos${naoLidos ? `: ${naoLidos} novos` : ""}`} className="relative grid h-9 w-9 place-items-center rounded-full text-lg leading-none text-stone-600 transition hover:bg-green-50 hover:text-green-800">
             🔔
             {!!naoLidos && (
-              <span className="absolute -top-2 -right-2.5 rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">{naoLidos > 9 ? "9+" : naoLidos}</span>
+              <span className="absolute -top-0.5 -right-0.5 min-w-4 animate-bounce rounded-full bg-amber-500 px-1 text-center text-[10px] leading-4 font-bold text-white ring-2 ring-white [animation-iteration-count:2]">{naoLidos > 9 ? "9+" : naoLidos}</span>
             )}
           </Link>
         )}
-        {empresa && <Link href={`/perfil/${empresa.id}`} title="Ver meu perfil e avaliações" className="max-w-[9rem] truncate text-stone-500 hover:text-green-800 sm:max-w-none">{empresa.nome}</Link>}
+        {empresa && (
+          <Link href={`/perfil/${empresa.id}`} title="Ver meu perfil e avaliações" className="flex items-center gap-2 text-stone-600 hover:text-green-800">
+            <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-amber-100 font-bold text-amber-900 ring-1 ring-amber-200">
+              {empresa.nome.trim().charAt(0).toUpperCase()}
+            </span>
+            <span className="hidden max-w-[10rem] truncate lg:inline">{empresa.nome}</span>
+          </Link>
+        )}
         {user ? (
           <form action={sair}>
             <button className="text-stone-600 hover:text-red-700">Sair</button>
