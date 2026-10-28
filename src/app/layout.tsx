@@ -62,7 +62,7 @@ async function Menu() {
 
   const itens: ItemMenu[] = empresa
     ? [
-        { href: "/vitrine", rotulo: "Vitrine", curto: "Vitrine", icone: "🛒" },
+        ...(empresa.papel === "comprador" ? [{ href: "/vitrine", rotulo: "Vitrine", curto: "Vitrine", icone: "🛒" }] : []),
         { href: "/pedidos", rotulo: "Leilões", curto: "Leilões", icone: "🔨" },
         ...(empresa.papel === "comprador" ? [{ href: "/historico", rotulo: "Meus preços", curto: "Preços", icone: "📈" }] : []),
         ...(empresa.papel === "fornecedor" ? [{ href: "/ofertas", rotulo: "Minhas ofertas", curto: "Ofertas", icone: "🏷️" }] : []),

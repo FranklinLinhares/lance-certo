@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { exigirEmpresa } from "@/lib/sessao";
 import { CATEGORIAS, PUBLICO, porUnidade, type Categoria, type Publico, type Unidade } from "@/lib/dominio";
 import { SeloPreco } from "@/components/SeloPreco";
@@ -42,6 +43,8 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
   // Filtro: ofertas que dá para comprar pelo app, promoções só na loja, ou todas.
   const modo = como === "app" || como === "loja" ? como : "todos";
   const { supabase, empresa } = await exigirEmpresa();
+  // A Vitrine é para comprar; no modo Vender a pessoa vai para as próprias ofertas.
+  if (empresa.papel !== "comprador") redirect("/ofertas");
 
   const { data } = await supabase.rpc("vitrine_ofertas", { termo: termo || null });
   // As próprias ofertas ficam em Minhas ofertas; a vitrine mostra só as de outras pessoas.
@@ -88,12 +91,7 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Vitrine</h1>
-        <div className="flex flex-wrap gap-2">
-          {empresa.papel === "fornecedor" && <Link href="/ofertas/nova" className="botao">Anunciar produto</Link>}
-        </div>
-      </div>
+      <h1 className="text-2xl font-bold">Vitrine</h1>
       <form className="flex flex-wrap gap-2">
         <input name="q" defaultValue={termo} placeholder="Buscar produto: tomate, arroz, frango..." className="campo min-w-48 flex-1" />
         <select name="de" defaultValue={origem} aria-label="Ver ofertas de" className="campo w-auto">
@@ -108,16 +106,9 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
         </select>
         <button className="botao">Buscar</button>
       </form>
-      {empresa.papel === "fornecedor" ? (
-        <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-          Você está no modo <strong>Vender</strong>: aqui aparecem as ofertas dos concorrentes perto de você. As suas ficam em{" "}
-          <Link href="/ofertas" className="underline">Minhas ofertas</Link>. Para comprar, troque para <strong>Comprar</strong> no menu.
-        </p>
-      ) : (
-        <p className="text-sm text-stone-500">
-          Ofertas de outros vendedores que entregam até você, dentro do seu raio de {empresa.raio_km} km.
-        </p>
-      )}
+      <p className="text-sm text-stone-500">
+        Ofertas de outros vendedores que entregam até você, dentro do seu raio de {empresa.raio_km} km.
+      </p>
 
       <MinhasCategorias marcadas={empresa.categorias} dica="As marcadas aparecem primeiro e abertas. A mesma escolha vale para os leilões no modo Vender." />
 
