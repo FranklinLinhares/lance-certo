@@ -146,7 +146,7 @@ export function LerFolheto({ comIa }: { comIa: boolean }) {
       <div className="cartao space-y-3">
         <h2 className="font-semibold">Pela planilha (mais rápido, sem IA)</h2>
         <p className="text-sm text-stone-600">
-          Preencha o <a href="/modelo-ofertas-lance-certo.xlsx" download className="font-medium text-green-800 underline">modelo de planilha</a> com produto, marca, categoria, unidade, preço e estoque, e envie aqui. Aceita .xlsx e .csv.
+          Preencha o <a href="/modelo-ofertas-cotai.xlsx" download className="font-medium text-green-800 underline">modelo de planilha</a> com produto, marca, categoria, unidade, preço e estoque, e envie aqui. Aceita .xlsx e .csv.
         </p>
         <input
           type="file"

@@ -10,7 +10,7 @@ import { trocarModo } from "@/app/cadastro/modo";
 const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Lance Certo",
+  title: "Cotaí",
   description: "Compra e venda de alimentos com leilão de menor preço e pesquisa de preços por IA.",
 };
 
@@ -23,7 +23,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <header className="border-b border-stone-200 bg-white">
           <nav className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3">
             <Link href="/" className="text-lg font-bold text-green-800">
-              Lance Certo
+              Cotaí
             </Link>
             <Suspense>
               <Menu />
