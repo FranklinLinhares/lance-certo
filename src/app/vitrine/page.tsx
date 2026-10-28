@@ -85,7 +85,6 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Vitrine</h1>
         <div className="flex flex-wrap gap-2">
-          <Link href={`/pesquisa${termo ? `?produto=${encodeURIComponent(termo)}` : ""}`} className="botao-secundario">Pesquisar em supermercados</Link>
           {empresa.papel === "fornecedor" && <Link href="/ofertas/nova" className="botao">Anunciar produto</Link>}
         </div>
       </div>

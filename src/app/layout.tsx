@@ -65,7 +65,7 @@ async function Menu() {
         { href: "/vitrine", rotulo: "Vitrine", curto: "Vitrine", icone: "🛒" },
         { href: "/pedidos", rotulo: "Leilões", curto: "Leilões", icone: "🔨" },
         ...(empresa.papel === "comprador" ? [{ href: "/historico", rotulo: "Meus preços", curto: "Preços", icone: "📈" }] : []),
-        { href: "/ofertas", rotulo: "Minhas ofertas", curto: "Ofertas", icone: "🏷️" },
+        ...(empresa.papel === "fornecedor" ? [{ href: "/ofertas", rotulo: "Minhas ofertas", curto: "Ofertas", icone: "🏷️" }] : []),
         { href: "/negocios", rotulo: "Negócios", curto: "Negócios", icone: "🤝", contador: aResponder ?? 0 },
         { href: "/contatos", rotulo: "Contatos", curto: "Contatos", icone: "👥" },
       ]
