@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { exigirEmpresa } from "@/lib/sessao";
 import { porUnidade, type Unidade } from "@/lib/dominio";
 import { FormularioCompra } from "./FormularioCompra";
+import { Economia } from "./Economia";
 import { ocultarHistorico } from "./acoes";
 import { BarraSelecao, Marcar } from "@/components/Selecao";
 import { buscarOcultos } from "@/lib/ocultos";
@@ -44,6 +45,7 @@ export default async function Historico() {
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Meus preços</h1>
       <p className="text-stone-600">Preço médio pago por semana nas últimas 12 semanas, com a variação em relação à semana anterior.</p>
+      <Economia supabase={supabase} comprador={empresa.id} />
       <FormularioCompra />
       {porProduto.size === 0 && <p className="text-stone-600">Suas compras aparecerão aqui.</p>}
       <BarraSelecao id="ocultar-historico" acao={ocultarHistorico} confirmar="Tirar {n} produto(s) de Meus preços? Eles somem só desta tela." />

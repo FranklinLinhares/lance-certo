@@ -199,7 +199,7 @@ function ListaLeiloes({ pedidos, vendendo, lances, eu }: { pedidos: Linha[]; ven
                     <div className="text-lg font-semibold">{p.produto} · {p.quantidade} {p.unidade}</div>
                     <div className="text-sm text-stone-500">
                       {CATEGORIAS[p.categoria]}
-                      {p.comprador_nome && <> · {p.comprador_nome}, {p.cidade} ({p.distancia_km} km)</>}
+                      {p.comprador_nome && <> · {p.comprador_nome}, {p.cidade} (até {p.distancia_km} km)</>}
                       {" · "}{p.total_lances ?? 0} lance(s)
                     </div>
                   </div>

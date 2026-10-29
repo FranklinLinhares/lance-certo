@@ -188,7 +188,7 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
                       {o.vende_para !== "todos" && <span className="ml-2 rounded-full bg-violet-100 px-2 py-0.5 text-xs text-violet-900">{PUBLICO[o.vende_para]}</span>}
                       {o.agricultor && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">Agricultura familiar</span>}
                       <div className="text-sm text-stone-500">
-                        {o.cidade} · {o.distancia_km} km
+                        {o.cidade} · até {o.distancia_km} km
                         {(!o.so_na_loja || Number(o.quantidade_disponivel) > 0) && <> · {o.quantidade_disponivel} {u} disponíveis</>}
                         {o.so_na_loja && <> · até {new Date(o.valida_ate).toLocaleDateString("pt-BR")}</>}
                         {o.validade && <> · validade {new Date(o.validade).toLocaleDateString("pt-BR")}</>}
