@@ -61,7 +61,7 @@ export default async function MinhasOfertas() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Minhas ofertas</h1>
         {empresa.papel === "fornecedor" ? (
           <div className="flex gap-2">
@@ -98,7 +98,7 @@ export default async function MinhasOfertas() {
                 <div>
                 <div className="font-semibold">
                   {o.produto}
-                  {o.so_na_loja && <span className="ml-2 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-900">🏪 Só na loja</span>}
+                  {o.so_na_loja && <span className="ml-2 inline-block rounded-full bg-violet-100 align-middle whitespace-nowrap px-2 py-0.5 text-xs font-medium text-violet-900">🏪 Só na loja</span>}
                 </div>
                 <div className="text-sm text-stone-500">
                   {CATEGORIAS[o.categoria]}

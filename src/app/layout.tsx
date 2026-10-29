@@ -20,14 +20,14 @@ export const viewport: Viewport = { themeColor: "#15803d" };
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="pt-BR" className={`${geist.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col font-sans">
+      <body className="flex min-h-full flex-col overflow-x-clip font-sans">
         <header className="sticky top-0 z-30 border-b border-stone-200/70 bg-white/95 shadow-sm shadow-stone-200/40">
-          <nav className="mx-auto flex max-w-5xl items-center gap-x-4 gap-y-2 px-4 py-2.5">
+          <nav className="mx-auto flex max-w-5xl items-center gap-x-2 gap-y-2 px-3 py-2.5 sm:gap-x-4 sm:px-4">
             <Link href="/" className="flex shrink-0 items-center gap-2 text-lg font-bold text-green-800">
               <span aria-hidden className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-br from-green-500 to-green-800 text-base text-white shadow-sm">
                 ⚖
               </span>
-              <span className="hidden min-[400px]:inline">Lance Certo</span>
+              <span className="hidden sm:inline">Lance Certo</span>
             </Link>
             <Suspense>
               <Menu />
@@ -74,7 +74,7 @@ async function Menu() {
   return (
     <>
       {empresa && <Navegacao itens={itens} />}
-      <div className="ml-auto flex items-center gap-3 text-sm">
+      <div className="ml-auto flex min-w-0 items-center gap-2 text-sm sm:gap-3">
         {empresa && (
           <form action={trocarModo} className="flex overflow-hidden rounded-full border border-stone-300">
             {(["comprador", "fornecedor"] as const).map((p) => (
@@ -83,7 +83,7 @@ async function Menu() {
                 name="papel"
                 value={p}
                 aria-pressed={empresa.papel === p}
-                className={`px-3 py-1 transition ${empresa.papel === p ? "bg-green-700 font-semibold text-white" : "text-stone-600 hover:bg-stone-100"}`}
+                className={`px-2.5 py-1.5 transition sm:px-3 ${empresa.papel === p ? "bg-green-700 font-semibold text-white" : "text-stone-600 hover:bg-stone-100"}`}
               >
                 {p === "comprador" ? "Comprar" : "Vender"}
               </button>
@@ -107,7 +107,8 @@ async function Menu() {
           </Link>
         )}
         {user ? (
-          <form action={sair}>
+          // No celular o Sair fica no próprio perfil, para o topo caber na tela.
+          <form action={sair} className="hidden sm:block">
             <button className="text-stone-600 hover:text-red-700">Sair</button>
           </form>
         ) : (
