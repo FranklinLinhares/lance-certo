@@ -22,7 +22,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="pt-BR" className={`${geist.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col overflow-x-clip font-sans">
         <header className="sticky top-0 z-30 border-b border-stone-200/70 bg-white/95 shadow-sm shadow-stone-200/40">
-          <nav className="mx-auto flex max-w-5xl items-center gap-x-2 gap-y-2 px-3 py-2.5 sm:gap-x-4 sm:px-4">
+          <nav className="relative mx-auto flex max-w-5xl items-center gap-x-2 gap-y-2 px-3 py-2.5 sm:gap-x-4 sm:px-4">
             <Link href="/" className="flex shrink-0 items-center gap-2 text-lg font-bold text-green-800">
               <span aria-hidden className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-br from-green-500 to-green-800 text-base text-white shadow-sm">
                 ⚖
@@ -76,7 +76,7 @@ async function Menu() {
       {empresa && <Navegacao itens={itens} />}
       <div className="ml-auto flex min-w-0 items-center gap-2 text-sm sm:gap-3">
         {empresa && (
-          <form action={trocarModo} className="flex overflow-hidden rounded-full border border-stone-300">
+          <form action={trocarModo} className="flex overflow-hidden rounded-full border border-stone-300 max-lg:absolute max-lg:top-1/2 max-lg:left-1/2 max-lg:-translate-x-1/2 max-lg:-translate-y-1/2">
             {(["comprador", "fornecedor"] as const).map((p) => (
               <button
                 key={p}
