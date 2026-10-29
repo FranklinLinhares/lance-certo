@@ -110,6 +110,15 @@ await falha(ids.atacado, `select reservar_oferta($1, 1)`, [propria], /própria o
 await db.exec(`update empresas set papel = 'fornecedor' where id = '${ids.atacado}'`);
 
 // Promoção só na loja: aparece na vitrine com o WhatsApp da loja, mas não aceita pedido.
+// Distância em faixas, sem casas decimais que revelem o endereço.
+for (const r of (await como(ids.restaurante, `select distancia_km from vitrine_ofertas('tomate')`)).rows) {
+  assert.ok(Number.isInteger(r.distancia_km) && r.distancia_km >= 1, `distância em km inteiro: ${r.distancia_km}`);
+}
+assert.deepEqual(
+  (await db.query(`select distancia_em_faixa(0.2) a, distancia_em_faixa(3.4) b, distancia_em_faixa(12.1) c, distancia_em_faixa(25) d`)).rows[0],
+  { a: 1, b: 4, c: 15, d: 25 },
+);
+
 await db.exec(`update ofertas set so_na_loja = true where fornecedor_id = '${ids.atacado}'`);
 const naLoja = (await como(ids.restaurante, `select so_na_loja, telefone_loja from vitrine_ofertas('tomate') where fornecedor_id = $1`, [ids.atacado])).rows[0];
 assert.equal(naLoja.so_na_loja, true);

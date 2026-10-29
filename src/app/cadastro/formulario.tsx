@@ -97,11 +97,11 @@ export function FormularioEmpresa({ empresa, email }: { empresa: Empresa | null;
       <div className="grid grid-cols-[1fr_5rem] gap-2">
         <div>
           <label className="rotulo" htmlFor="cidade">Cidade</label>
-          <input id="cidade" name="cidade" required defaultValue={empresa?.cidade} className="campo" />
+          <input id="cidade" name="cidade" required defaultValue={empresa?.cidade} onChange={() => setLocal(null)} className="campo" />
         </div>
         <div>
           <label className="rotulo" htmlFor="uf">UF</label>
-          <input id="uf" name="uf" required maxLength={2} defaultValue={empresa?.uf ?? "PB"} className="campo uppercase" />
+          <input id="uf" name="uf" required maxLength={2} defaultValue={empresa?.uf ?? "PB"} onChange={() => setLocal(null)} className="campo uppercase" />
         </div>
       </div>
       <div className="flex items-center gap-3 text-sm">
