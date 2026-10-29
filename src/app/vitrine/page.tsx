@@ -130,17 +130,17 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
         const nOfertas = listas.reduce((t, l) => t + l.length, 0);
         return (
           <details key={cat} open={abrirTodas || interesses.has(cat)} className="cartao group space-y-3 p-0">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-xl px-4 py-3 hover:bg-stone-50">
+            <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-3 hover:bg-stone-50 sm:px-4">
               <span className="text-lg font-bold">
                 <span className="mr-2 inline-block transition-transform group-open:rotate-90" aria-hidden>▸</span>
                 {CATEGORIAS[cat]}
-                {interesses.has(cat) && <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-900">Seu interesse</span>}
+                {interesses.has(cat) && <span className="ml-2 inline-block rounded-full bg-green-100 px-2 py-0.5 align-middle text-xs font-medium whitespace-nowrap text-green-900">Seu interesse</span>}
               </span>
               <span className="text-sm text-stone-500">
                 {listas.length} produto{listas.length > 1 ? "s" : ""} · {nOfertas} oferta{nOfertas > 1 ? "s" : ""}
               </span>
             </summary>
-            <div className="space-y-3 px-4 pb-4">
+            <div className="space-y-3 px-2 pb-3 sm:px-4 sm:pb-4">
       {listas.map((lista) => {
         const precos = lista.map((o) => Number(o.preco_unitario));
         const u = lista[0].unidade;
@@ -197,7 +197,7 @@ export default async function Vitrine({ searchParams }: PageProps<"/vitrine">) {
                       {o.descricao && <div className="text-sm">{o.descricao}</div>}
                     </div>
                     </div>
-                    <div className="text-right">
+                    <div className="ml-auto text-right">
                       <div className="font-bold text-green-800">{porUnidade(o.preco_unitario, u)}</div>
                       <SeloPreco preco={o.preco_unitario} mercado={mercado} unidade={u} />
                     </div>

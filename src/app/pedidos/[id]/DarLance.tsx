@@ -16,7 +16,7 @@ export function DarLance({ pedido, unidade, dica, mercado }: { pedido: string; u
       <h2 className="font-semibold">Dar lance</h2>
       <p className="text-sm text-stone-600">{dica}</p>
       <input type="hidden" name="pedido" value={pedido} />
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid gap-2 sm:grid-cols-2">
         <div>
           <label className="rotulo" htmlFor="preco">Preço por {UNIDADES[unidade]} (R$)</label>
           <input id="preco" name="preco" required inputMode="decimal" className="campo" value={preco} onChange={(e) => setPreco(e.target.value)} />

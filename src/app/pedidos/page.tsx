@@ -136,15 +136,15 @@ function PorCategoria({ pedidos, vendendo, lances, eu }: { pedidos: Linha[]; ven
         const atencao = lista.filter((p) => situacao(p, lances.get(p.id) ?? [], vendendo, eu)).length;
         return (
           <details key={cat} open={categorias.length === 1 || atencao > 0} className="cartao group space-y-3 p-0">
-            <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-3 hover:bg-stone-50">
+            <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-3 hover:bg-stone-50 sm:px-4">
               <span className="text-lg font-bold">
                 <span className="mr-2 inline-block transition-transform group-open:rotate-90" aria-hidden>▸</span>
                 {CATEGORIAS[cat]}
-                {atencao > 0 && <span className="ml-2 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-900">{atencao} com novidade</span>}
+                {atencao > 0 && <span className="ml-2 inline-block rounded-full bg-sky-100 px-2 py-0.5 align-middle text-xs font-medium whitespace-nowrap text-sky-900">{atencao} com novidade</span>}
               </span>
               <span className="text-sm text-stone-500">{lista.length} leilão(ões)</span>
             </summary>
-            <div className="px-4 pb-4">
+            <div className="px-2 pb-3 sm:px-4 sm:pb-4">
               <ListaLeiloes pedidos={lista} vendendo={vendendo} lances={lances} eu={eu} />
             </div>
           </details>
