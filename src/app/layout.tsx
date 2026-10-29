@@ -73,7 +73,9 @@ async function Menu() {
 
   return (
     <>
-      {empresa && <Navegacao itens={itens} />}
+      {/* Faixa na cor do modo atual no alto da tela: verde comprando, azul vendendo. */}
+      {empresa && <span aria-hidden className={`fixed inset-x-0 top-0 z-40 h-1 ${empresa.papel === "fornecedor" ? "bg-sky-600" : "bg-green-600"}`} />}
+      {empresa && <Navegacao itens={itens} modo={empresa.papel} />}
       <div className="ml-auto flex min-w-0 items-center gap-2 text-sm sm:gap-3">
         {empresa && (
           <form action={trocarModo} className="flex overflow-hidden rounded-full border border-stone-300 max-lg:absolute max-lg:top-1/2 max-lg:left-1/2 max-lg:-translate-x-1/2 max-lg:-translate-y-1/2">
@@ -83,7 +85,7 @@ async function Menu() {
                 name="papel"
                 value={p}
                 aria-pressed={empresa.papel === p}
-                className={`px-2.5 py-1.5 transition sm:px-3 ${empresa.papel === p ? "bg-green-700 font-semibold text-white" : "text-stone-600 hover:bg-stone-100"}`}
+                className={`px-2.5 py-1.5 transition sm:px-3 ${empresa.papel !== p ? "text-stone-600 hover:bg-stone-100" : p === "fornecedor" ? "bg-sky-700 font-semibold text-white" : "bg-green-700 font-semibold text-white"}`}
               >
                 {p === "comprador" ? "Comprar" : "Vender"}
               </button>
