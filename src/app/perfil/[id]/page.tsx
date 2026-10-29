@@ -4,6 +4,7 @@ import { exigirEmpresa } from "@/lib/sessao";
 import { buscarReputacao } from "@/lib/reputacao";
 import { Estrelas } from "@/components/Estrelas";
 import { dataHora } from "@/lib/dominio";
+import { sair } from "@/app/entrar/acoes";
 
 type Perfil = {
   id: string;
@@ -58,6 +59,11 @@ export default async function PerfilPublico({ params }: PageProps<"/perfil/[id]"
           <p className="pt-2 text-sm">
             Este é o seu perfil, como os outros veem. <Link href="/cadastro" className="underline">Editar cadastro</Link>
           </p>
+        )}
+        {meuPerfil && (
+          <form action={sair} className="pt-2 sm:hidden">
+            <button className="botao-secundario w-full text-red-700">Sair da conta</button>
+          </form>
         )}
       </div>
 
