@@ -69,7 +69,7 @@ export function BarraSelecao({
         />
         Marcar todos
       </label>
-      <span className="text-stone-500">{marcados ? `${marcados} marcado${marcados > 1 ? "s" : ""}` : "Marque para excluir"}</span>
+      <span className={`text-stone-500 ${marcados ? "" : "hidden sm:inline"}`}>{marcados ? `${marcados} marcado${marcados > 1 ? "s" : ""}` : "Marque para excluir"}</span>
       <button
         disabled={!marcados || enviando}
         className="ml-auto inline-flex items-center rounded-lg bg-red-700 px-3 py-1.5 font-semibold text-white hover:bg-red-800 disabled:opacity-40"

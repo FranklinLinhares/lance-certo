@@ -13,7 +13,7 @@ export function SeloPreco({ preco, mercado, unidade }: { preco: number; mercado:
   if (!mercado || !selo) return null;
   return (
     <span
-      className={`rounded-full px-2 py-0.5 text-xs font-medium ${CORES[selo.tom]}`}
+      className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${CORES[selo.tom]}`}
       title={`Média: ${porUnidade(mercado.media, unidade)} (${mercado.fonte})`}
     >
       {selo.texto}

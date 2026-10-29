@@ -61,7 +61,7 @@ export function FormularioPedido({ produtoInicial, fornecedores }: { produtoInic
           <label className="rotulo" htmlFor="produto">Produto</label>
           <input id="produto" name="produto" required defaultValue={item.produto} className="campo" />
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           <div>
             <label className="rotulo" htmlFor="quantidade">Quantidade</label>
             <input id="quantidade" name="quantidade" required inputMode="decimal" defaultValue={item.quantidade ?? ""} className="campo" />
@@ -72,7 +72,7 @@ export function FormularioPedido({ produtoInicial, fornecedores }: { produtoInic
               {Object.entries(UNIDADES).map(([v, n]) => <option key={v} value={v}>{n}</option>)}
             </select>
           </div>
-          <div>
+          <div className="col-span-2 sm:col-span-1">
             <label className="rotulo" htmlFor="categoria">Categoria</label>
             <select id="categoria" name="categoria" defaultValue={item.categoria} className="campo">
               {Object.entries(CATEGORIAS).map(([v, n]) => <option key={v} value={v}>{n}</option>)}
@@ -83,7 +83,7 @@ export function FormularioPedido({ produtoInicial, fornecedores }: { produtoInic
           <label className="rotulo" htmlFor="especificacoes">Especificações</label>
           <textarea id="especificacoes" name="especificacoes" rows={2} defaultValue={item.especificacoes} placeholder="Tipo, classe, corte, embalagem..." className="campo" />
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-2 sm:grid-cols-2">
           <div>
             <label className="rotulo" htmlFor="entrega_ate">Entregar até</label>
             <input id="entrega_ate" name="entrega_ate" type="date" className="campo" />

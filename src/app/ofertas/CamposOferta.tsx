@@ -65,7 +65,7 @@ export function CamposOferta({ valores }: { valores: ValoresOferta }) {
           <p className="mt-1 text-xs text-stone-500">Opcional na promoção só na loja.</p>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid gap-2 sm:grid-cols-2">
         <div>
           <label className="rotulo" htmlFor="validade">Validade do produto</label>
           <input id="validade" name="validade" type="date" defaultValue={valores.validade ?? ""} className="campo" />

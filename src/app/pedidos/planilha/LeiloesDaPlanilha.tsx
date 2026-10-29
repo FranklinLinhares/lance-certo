@@ -116,7 +116,7 @@ export function LeiloesDaPlanilha() {
             </span>
             <span className="text-sm text-stone-500">{linhas.filter((l) => l.categoria === cat).length} produto(s)</span>
           </summary>
-          <ul className="space-y-3 px-4 pb-4">
+          <ul className="space-y-3 px-2 pb-3 sm:px-4 sm:pb-4">
             {linhas.map((l, i) =>
               l.categoria !== cat ? null : (
                 <li key={i} className={`space-y-2 rounded-lg border p-3 ${l.incluir ? "" : "opacity-50"} ${l.conferir ? "border-amber-400 bg-amber-50" : "border-stone-200"}`}>
