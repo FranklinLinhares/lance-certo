@@ -378,6 +378,20 @@ assert.equal(await pode("anon", "telefones_de_negocio(uuid[])"), false, "sem log
 assert.equal(await pode("authenticated", "reservar_oferta(uuid, numeric)"), true, "logado reserva");
 await falha(ids.restaurante, `select devolver_estoque(r) from reservas r limit 1`, [], /permission denied/);
 
+// Avisos no celular: cada conta ativa o próprio aparelho; a tabela não fica aberta.
+await como(ids.restaurante, `select registrar_celular('https://push.exemplo/abc', 'chave', 'segredo')`);
+assert.equal((await db.query(`select empresa_id from push_inscricoes`)).rows[0].empresa_id, ids.restaurante);
+await falha(ids.atacado, `select * from push_inscricoes`, [], /permission denied/);
+await como(ids.atacado, `select registrar_celular('https://push.exemplo/abc', 'chave', 'segredo')`);
+assert.equal((await db.query(`select empresa_id from push_inscricoes`)).rows[0].empresa_id, ids.atacado, "o aparelho passa para a conta que entrou nele");
+await falha(ids.atacado, `select registrar_celular('http://inseguro', 'a', 'b')`, [], /endereço de notificação válido/);
+await como(ids.restaurante, `select remover_celular('https://push.exemplo/abc')`);
+assert.equal((await db.query(`select 1 from push_inscricoes`)).rows.length, 1, "não remove o aparelho de outra conta");
+await falha(ids.atacado, `select apagar_celular_expirado('chute', 'https://push.exemplo/abc')`, [], /Não autorizado/);
+assert.equal(await pode("authenticated", "segredo_push(text)"), false, "ninguém lê o segredo pela API");
+await db.query(`insert into avisos (empresa_id, texto, link) values ($1, 'teste', '/')`, [ids.atacado]);
+assert.equal((await db.query(`select 1 from avisos where empresa_id = $1 and texto = 'teste'`, [ids.atacado])).rows.length, 1, "sem o cofre configurado o aviso do sino continua");
+
 // Contatos cadastrados à mão ficam só na agenda de quem cadastrou.
 await como(ids.restaurante, `insert into contatos_manuais (tipo, nome, telefone) values ('fornecedor', 'Seu Zé da Feira', '83999990000')`);
 assert.equal((await como(ids.restaurante, `select nome from contatos_manuais`)).rows.length, 1);
