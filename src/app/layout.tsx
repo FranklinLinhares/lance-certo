@@ -7,15 +7,17 @@ import { criarClienteServidor } from "@/lib/supabase/server";
 import { sair } from "@/app/entrar/acoes";
 import { trocarModo } from "@/app/cadastro/modo";
 import { Navegacao, type ItemMenu } from "@/components/Navegacao";
+import { InstalarApp } from "@/components/InstalarApp";
 
 const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Lance Certo",
   description: "Compra e venda de alimentos com leilão de menor preço e pesquisa de preços por IA.",
+  appleWebApp: { capable: true, title: "Lance Certo", statusBarStyle: "default" },
 };
 
-export const viewport: Viewport = { themeColor: "#15803d" };
+export const viewport: Viewport = { themeColor: "#15803d", viewportFit: "cover" };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
@@ -35,6 +37,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </nav>
         </header>
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-24 lg:pb-10">
+          <InstalarApp />
           <Suspense>{children}</Suspense>
         </main>
       </body>

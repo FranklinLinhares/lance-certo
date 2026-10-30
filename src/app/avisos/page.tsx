@@ -3,6 +3,7 @@ import { exigirEmpresa } from "@/lib/sessao";
 import { dataHora, porUnidade, type Unidade } from "@/lib/dominio";
 import { marcarTodosLidos, removerAlerta } from "./acoes";
 import { NovoAlerta } from "./NovoAlerta";
+import { AvisosNoCelular } from "./AvisosNoCelular";
 
 type Aviso = { id: string; texto: string; lido: boolean; criado_em: string };
 type Alerta = { id: string; produto: string; unidade: Unidade; preco_maximo: number };
@@ -28,6 +29,7 @@ export default async function Avisos() {
           </form>
         )}
       </div>
+      <AvisosNoCelular />
       {avisos.length === 0 ? (
         <p className="cartao text-stone-600">
           Nada por aqui ainda. Você recebe avisos de leilões novos perto de você, lances nos seus leilões, pedidos da vitrine e alertas de preço.
