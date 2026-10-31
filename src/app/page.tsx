@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { criarClienteServidor } from "@/lib/supabase/server";
 
 const RECURSOS = [
   {
@@ -24,7 +25,10 @@ const PASSOS = [
   { titulo: "Feche o negócio", texto: "Escolha o melhor preço e combine a entrega." },
 ];
 
-export default function Inicio() {
+export default async function Inicio() {
+  // Quem já entrou vai direto para o app, sem passar de novo pela tela de entrar.
+  const configurado = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const user = configurado ? (await (await criarClienteServidor()).auth.getUser()).data.user : null;
   return (
     <div className="space-y-10 py-2">
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-green-700 via-green-800 to-emerald-950 px-6 py-10 text-white shadow-lg sm:px-10 sm:py-14">
@@ -42,8 +46,8 @@ export default function Inicio() {
             Fornecedores e agricultores anunciam o que têm, e você compara preços lado a lado.
           </p>
           <div className="flex flex-wrap gap-3">
-            <Link href="/entrar" className="botao from-amber-400 to-amber-500 text-amber-950 hover:from-amber-300 hover:to-amber-400">
-              Começar agora →
+            <Link href={user ? "/vitrine" : "/entrar"} className="botao from-amber-400 to-amber-500 text-amber-950 hover:from-amber-300 hover:to-amber-400">
+              {user ? "Abrir o app →" : "Começar agora →"}
             </Link>
             <Link href="/vitrine" className="botao-secundario border-white/40 bg-white/10 text-white hover:border-white hover:bg-white/20">
               Ver a vitrine

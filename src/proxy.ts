@@ -42,6 +42,14 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Já logado não precisa da tela de entrar.
+  if (user && request.nextUrl.pathname === "/entrar") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/vitrine";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
   if (!user && !ROTAS_PUBLICAS.includes(request.nextUrl.pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/entrar";

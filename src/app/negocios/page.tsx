@@ -8,6 +8,7 @@ import { BarraSelecao, Marcar } from "@/components/Selecao";
 import { buscarOcultos } from "@/lib/ocultos";
 import { BORDA_CARTAO, Situacao, type TomSituacao } from "@/components/Situacao";
 import { BotaoConfirmar } from "@/components/BotaoConfirmar";
+import { trocarModo } from "@/app/cadastro/modo";
 
 type Negocio = {
   id: string;
@@ -45,9 +46,10 @@ const RESPOSTA: Record<"aguardando" | "recusada" | "cancelada", { tom: TomSituac
   cancelada: { tom: "cancelado", texto: "Você desistiu" },
 };
 
-// Compras e vendas feitas no app, com a avaliação da outra parte.
+// Negócios do modo atual: no Comprar só as compras, no Vender só as vendas.
 export default async function Negocios() {
   const { supabase, empresa } = await exigirEmpresa();
+  const vendendo = empresa.papel === "fornecedor";
 
   const { data } = await supabase
     .from("compras")
@@ -55,7 +57,7 @@ export default async function Negocios() {
       "id, produto, unidade, quantidade, preco_unitario, origem, criado_em, concluido_comprador_em, concluido_fornecedor_em, comprador:empresas!compras_comprador_id_fkey(id, nome), fornecedor:empresas!compras_fornecedor_id_fkey(id, nome)",
     )
     .not("fornecedor_id", "is", null)
-    .or(`comprador_id.eq.${empresa.id},fornecedor_id.eq.${empresa.id}`)
+    .eq(vendendo ? "fornecedor_id" : "comprador_id", empresa.id)
     .order("criado_em", { ascending: false })
     .limit(50);
   const comprasOcultas = await buscarOcultos(supabase, "compra");
@@ -74,16 +76,25 @@ export default async function Negocios() {
     .returns<Reserva[]>();
   const reservasOcultas = await buscarOcultos(supabase, "reserva");
   const reservas = (dadosReservas ?? []).filter((r) => !reservasOcultas.has(r.id));
-  const paraResponder = reservas.filter((r) => r.situacao === "aguardando" && r.fornecedor?.id === empresa.id);
-  const meusPedidos = reservas.filter((r) => r.comprador?.id === empresa.id);
+  const pedidosRecebidos = reservas.filter((r) => r.situacao === "aguardando" && r.fornecedor?.id === empresa.id);
+  const paraResponder = vendendo ? pedidosRecebidos : [];
+  const meusPedidos = vendendo ? [] : reservas.filter((r) => r.comprador?.id === empresa.id);
 
   const { data: minhas } = await supabase.from("avaliacoes").select("compra_id, nota").eq("avaliador_id", empresa.id);
   const notaDada = new Map((minhas ?? []).map((a) => [a.compra_id as string, a.nota as number]));
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Meus negócios</h1>
+      <h1 className="text-2xl font-bold">{vendendo ? "Minhas vendas" : "Minhas compras"}</h1>
       <p className="text-stone-600">Quando o negócio terminar, confirme aqui. Depois que você e a outra parte confirmarem, cada um avalia o outro, e as notas aparecem no perfil.</p>
+      {!vendendo && pedidosRecebidos.length > 0 && (
+        <form action={trocarModo} className="aviso flex flex-wrap items-center justify-between gap-2">
+          <span>Você tem {pedidosRecebidos.length} pedido(s) de compra esperando sua resposta no modo Vender.</span>
+          <input type="hidden" name="papel" value="fornecedor" />
+          <input type="hidden" name="voltar" value="/negocios" />
+          <button className="botao py-1">Mudar para Vender</button>
+        </form>
+      )}
       <BarraSelecao id="excluir-negocios" acao={excluirNegocios} confirmar="Tirar {n} item(ns) da sua lista de negócios? Eles somem só para você; a outra parte e as avaliações continuam. Pedido seu ainda aguardando é cancelado." />
       {paraResponder.length > 0 && (
         <section className="space-y-2">
@@ -135,7 +146,7 @@ export default async function Negocios() {
           </ul>
         </section>
       )}
-      {negocios.length === 0 && <p className="cartao text-stone-600">Você ainda não fechou negócios pelo app.</p>}
+      {negocios.length === 0 && <p className="cartao text-stone-600">{vendendo ? "Você ainda não fechou vendas pelo app. Suas compras ficam no modo Comprar." : "Você ainda não fechou compras pelo app. Suas vendas ficam no modo Vender."}</p>}
       <ul className="space-y-3">
         {negocios.map((n) => {
           const vendi = n.fornecedor?.id === empresa.id;
