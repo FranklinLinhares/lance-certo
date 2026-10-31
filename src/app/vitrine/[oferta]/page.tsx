@@ -27,7 +27,24 @@ export default async function ConfirmarCompra({ params, searchParams }: PageProp
   // A vitrine já filtra o que esta conta pode ver e comprar.
   const { data } = await supabase.rpc("vitrine_ofertas", { termo: null });
   const oferta = ((data ?? []) as Oferta[]).find((o) => o.id === id && o.fornecedor_id !== empresa.id);
-  if (!oferta || oferta.so_na_loja) notFound();
+  if (oferta?.so_na_loja) notFound();
+  // Quem pede toda a quantidade tira a oferta da vitrine; mostra o caminho em vez de "página não encontrada".
+  if (!oferta) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-4">
+        <h1 className="text-2xl font-bold">Oferta indisponível</h1>
+        <div className="cartao space-y-3">
+          <p className="text-stone-700">
+            Esta oferta não está mais na vitrine. Se você acabou de fazer o pedido, ele está em Negócios esperando o vendedor aceitar.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/negocios" className="botao">Ver meus pedidos</Link>
+            <Link href="/vitrine" className="botao-secundario">Voltar para a vitrine</Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const pedida = Number(String(quantidade ?? "").replace(",", "."));
   const qtd = pedida > 0 ? Math.min(pedida, Number(oferta.quantidade_disponivel)) : Math.min(1, Number(oferta.quantidade_disponivel));
